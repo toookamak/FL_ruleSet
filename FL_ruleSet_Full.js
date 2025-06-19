@@ -1,7 +1,7 @@
 /*** 
- * Clash Verge Rev 全局扩展脚本（结构化优化版）
- * 版本：2.0.9
- * 修复：修复家宽分组问题
+ * Clash Verge Rev 全局扩展脚本（性能优化版）
+ * 版本：3.0.0
+ * 优化：节点分组算法、延迟加载、逻辑分层
  */
 
 // ================= 配置分离区 =================
@@ -17,7 +17,7 @@ const CONFIG = {
     OPENAI: "https://chat.openai.com/cdn-cgi/trace",
     APPLE: "http://www.apple.com/library/test/success.html",
     GOOGLE: "http://www.google.com/generate_204",
-    MICROSOFT: "http://www.msftconnecttest.com/connecttest.txt",
+    MICROSOFT: "http://www.ms极速connecttest.com/connecttest.txt",
     GITHUB: "https://github.com/robots.txt",
     CHINA: "http://wifi.vivo.com.cn/generate_204"
   },
@@ -167,7 +167,7 @@ const DNS_CONFIG = {
   'cache-ttl-max': 3600,
   'nameserver-policy': {
     'geosite:private': 'system',
-    'geosite:cn,steam@cn,category-games@极速n,microsoft@cn,apple@cn': ['119.29.29.29', '223.5.5.5']
+    'geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn': ['119.29.29.29', '223.5.5.5']
   }
 };
 
@@ -238,9 +238,18 @@ const GroupFactory = {
 };
 
 /**
- * 规则管理器
+ * 规则管理器（优化：延迟加载）
  */
 const RuleManager = {
+  ruleProviders: null,
+  
+  getRuleProviders() {
+    if (!this.ruleProviders) {
+      this.ruleProviders = this.initRuleProviders();
+    }
+    return this.ruleProviders;
+  },
+  
   /**
    * 初始化规则提供者
    */
@@ -284,7 +293,7 @@ const RuleManager = {
   /**
    * 构建规则列表
    */
-  buildRules(ruleProviders) {
+  buildRules() {
     const rules = [...RULE_CONFIG.PRE_RULES];
     
     // 添加功能规则
@@ -370,45 +379,56 @@ const RuleManager = {
 };
 
 /**
- * 节点管理器
+ * 节点管理器（优化：高效分组算法）
  */
 const NodeManager = {
   /**
-   * 按地区分组节点
+   * 按地区分组节点（优化版本）
    */
   groupNodesByRegion(proxies) {
-    const regionGroups = [];
+    const regionGroups = new Map();
     const groupedProxies = new Set();
+    const regions = REGION_CONFIG.regions;
     
-    REGION_CONFIG.regions.forEach(region => {
-      const groupProxies = [];
-      
-      proxies.forEach(proxy => {
-        if (groupedProxies.has(proxy.name)) return;
-        
-        // 修复倍率提取逻辑
-        let multiplier = 0;
-        const multiplierMatch = proxy.name.match(CONFIG.MULTIPLIER_REGEX);
-        if (multiplierMatch && multiplierMatch[2]) {
-          multiplier = parseFloat(multiplierMatch[2]);
-        }
-        
-        // 家宽分组优先匹配
-        if (region.regex.test(proxy.name) && multiplier <= region.ratioLimit) {
-          groupProxies.push(proxy.name);
-          groupedProxies.add(proxy.name);
-        }
+    // 预先创建分组对象
+    regions.forEach(region => {
+      regionGroups.set(region.name, {
+        group: GroupFactory.createRegionGroup(region),
+        region
       });
+    });
+    
+    // 单次遍历处理所有节点
+    proxies.forEach(proxy => {
+      if (groupedProxies.has(proxy.name)) return;
       
-      if (groupProxies.length > 0) {
-        const group = GroupFactory.createRegionGroup(region);
-        group.proxies = groupProxies;
-        regionGroups.push(group);
+      // 缓存倍率计算
+      let multiplier = 0;
+      if (!proxy._multiplier) {
+        const match = proxy.name.match(CONFIG.MULTIPLIER_REGEX);
+        proxy._multiplier = match && match[2] ? parseFloat(match[2]) : 0;
+      }
+      multiplier = proxy._multiplier;
+      
+      // 查找匹配的分组
+      const matchedRegion = regions.find(region => 
+        region.regex.test(proxy.name) && multiplier <= region.ratioLimit
+      );
+      
+      if (matchedRegion) {
+        const groupObj = regionGroups.get(matchedRegion.name);
+        groupObj.group.proxies.push(proxy.name);
+        groupedProxies.add(proxy.name);
       }
     });
     
+    // 过滤掉空分组
+    const validGroups = Array.from(regionGroups.values())
+      .filter(item => item.group.proxies.length > 0)
+      .map(item => item.group);
+    
     return {
-      regionGroups,
+      regionGroups: validGroups,
       ungrouped: proxies
         .map(p => p.name)
         .filter(name => !groupedProxies.has(name))
@@ -417,7 +437,7 @@ const NodeManager = {
 };
 
 /**
- * 策略组构建器
+ * 策略组构建器（优化：按需构建）
  */
 const PolicyBuilder = {
   /**
@@ -467,13 +487,13 @@ const PolicyBuilder = {
   },
 
   /**
-   * 构建应用策略组
+   * 构建应用策略组（按需构建）
    */
   buildAppGroups(regionGroups) {
     const regionGroupNames = regionGroups.map(g => g.name);
     const appGroups = [];
     
-    // Notion办公
+    // Notion办公（按需）
     if (FEATURE_FLAGS.notion) {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Notion办公',
@@ -483,7 +503,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // 国外AI
+    // 国外AI（按需）
     if (FEATURE_FLAGS.openai) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '国外AI',
@@ -494,7 +514,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // YouTube
+    // YouTube（按需）
     if (FEATURE_FLAGS.youtube) {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'YouTube',
@@ -505,7 +525,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // Telegram
+    // Telegram（按需）
     if (FEATURE_FLAGS.telegram) {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Telegram',
@@ -516,7 +536,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // 游戏专用策略组
+    // 游戏专用策略组（按需）
     if (FEATURE_FLAGS.games) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '游戏专用',
@@ -526,27 +546,27 @@ const PolicyBuilder = {
       }));
     }
     
-    // 跟踪分析拦截
+    // 跟踪分析拦截（按需）
     if (FEATURE_FLAGS.tracker) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '跟踪分析',
         type: 'select',
-        proxies: ['拒绝', '直连', '代理模式'], // 使用"拒绝"替代"REJECT"
+        proxies: ['拒绝', '直连', '代理模式'],
         icon: `${CONFIG.ICON_BASE_URL}Reject.png`
       }));
     }
     
-    // 广告过滤
+    // 广告过滤（按需）
     if (FEATURE_FLAGS.BanAD) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '广告过滤',
         type: 'select',
-        proxies: ['拒绝', '直连', '代理模式'], // 使用"拒绝"替代"REJECT"
+        proxies: ['拒绝', '直连', '代理模式'],
         icon: `${CONFIG.ICON_BASE_URL}Advertising.png`
       }));
     }
     
-    // 苹果服务
+    // 苹果服务（按需）
     if (FEATURE_FLAGS.apple) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '苹果服务',
@@ -557,7 +577,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // 谷歌服务
+    // 谷歌服务（按需）
     if (FEATURE_FLAGS.google) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '谷歌服务',
@@ -568,7 +588,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // 微软服务
+    // 微软服务（按需）
     if (FEATURE_FLAGS.microsoft) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '微软服务',
@@ -579,7 +599,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // GitHub服务
+    // GitHub服务（按需）
     if (FEATURE_FLAGS.github) {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Github',
@@ -590,7 +610,7 @@ const PolicyBuilder = {
       }));
     }
     
-    // Epic下载服务
+    // Epic下载服务（按需）
     if (FEATURE_FLAGS.epicDownload) {
       appGroups.push(GroupFactory.createAppGroup({
         name: '虚幻引擎',
@@ -614,7 +634,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '下载软件',
         type: 'select',
-        proxies: ['直连', '拒绝', '代理模式', '国内网站', ...regionGroupNames], // 使用"拒绝"替代"REJECT"
+        proxies: ['直连', '拒绝', '代理模式', '国内网站', ...regionGroupNames],
         icon: `${CONFIG.ICON_BASE_URL}Download.png`
       }),
       
@@ -725,14 +745,15 @@ const MainController = {
   },
 
   /**
-   * 主处理函数
+   * 主处理函数（优化：逻辑分层）
    */
   process(config) {
     // 总开关检查
     if (!CONFIG.ENABLE) return config;
     
-    // 配置验证
+    // 第一阶段：必要初始化
     this.validateConfig();
+    config = this.initConfig(config);
     
     // 节点检查
     const proxyCount = config?.proxies?.length ?? 0;
@@ -744,16 +765,10 @@ const MainController = {
       throw new Error('配置文件中未找到任何代理');
     }
     
-    // 初始化配置
-    config = this.initConfig(config);
-    
-    // 初始化规则提供者
-    const ruleProviders = RuleManager.initRuleProviders();
-    
-    // 节点分组
+    // 第二阶段：节点分组
     const { regionGroups, ungrouped } = NodeManager.groupNodesByRegion(config.proxies);
     
-    // 构建策略组
+    // 第三阶段：策略组构建
     const coreGroups = PolicyBuilder.buildCoreGroups(regionGroups, ungrouped);
     const appGroups = PolicyBuilder.buildAppGroups(regionGroups);
     const basicGroups = PolicyBuilder.buildBasicGroups(regionGroups);
@@ -785,7 +800,7 @@ const MainController = {
       });
     }
     
-    // 添加拒绝节点（使用新名称避免冲突）
+    // 添加拒绝节点（如果不存在）
     if (!config.proxies.some(p => p.name === '拒绝')) {
       config.proxies.push({
         name: '拒绝',
@@ -801,9 +816,9 @@ const MainController = {
         .map(p => p.name);
     }
     
-    // 设置规则和规则提供者
-    config['rules'] = RuleManager.buildRules(ruleProviders);
-    config['rule-providers'] = Object.fromEntries(ruleProviders);
+    // 第四阶段：规则处理（延迟加载）
+    config['rules'] = RuleManager.buildRules();
+    config['rule-providers'] = Object.fromEntries(RuleManager.getRuleProviders());
     
     return config;
   }
