@@ -1,7 +1,7 @@
 /*** 
- * Clash Verge Rev 全局扩展脚本（性能优化版）
- * 版本：3.0.0
- * 优化：节点分组算法、延迟加载、逻辑分层
+ * Clash Verge Rev 全局扩展脚本（修复循环依赖）
+ * 版本：3.1.3
+ * 修复：策略组循环依赖问题
  */
 
 // ================= 配置分离区 =================
@@ -17,7 +17,7 @@ const CONFIG = {
     OPENAI: "https://chat.openai.com/cdn-cgi/trace",
     APPLE: "http://www.apple.com/library/test/success.html",
     GOOGLE: "http://www.google.com/generate_204",
-    MICROSOFT: "http://www.ms极速connecttest.com/connecttest.txt",
+    MICROSOFT: "http://www.msftconnecttest.com/connecttest.txt",
     GITHUB: "https://github.com/robots.txt",
     CHINA: "http://wifi.vivo.com.cn/generate_204"
   },
@@ -35,6 +35,11 @@ const CONFIG = {
     lazy: true,
     'max-failed-times': 3,
     hidden: false
+  },
+  // 自定义规则链接
+  CUSTOM_RULES: {
+    DIRECT: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/main/OwnRules/OwnDIRECTRules.list",
+    PROXY: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/main/OwnRules/OwnPROXYRules.list"
   }
 };
 
@@ -56,21 +61,8 @@ const FEATURE_FLAGS = {
   tracker: true,
   BanAD: true,
   BanProgramAD: true,
-  spotify: false,
-  bahamut: false,
-  netflix: false,
-  tiktok: false,
-  disney: false,
-  pixiv: false,
-  hbo: false,
-  biliintl: false,
-  tvb: false,
-  hulu: false,
-  primevideo: false,
-  line: false,
-  whatsapp: false,
-  games: false,
-  japan: false,
+  // 自定义规则开关（默认开启）
+  customRules: true
 };
 
 /**
@@ -108,7 +100,7 @@ const REGION_CONFIG = {
     { 
       name: '低倍率', 
       regex: /低倍率|0\.2|0.5|ratio|倍率低/i, 
-      ratioLimit: 0.2,
+      ratioLimit: 0.8,
       icon: 'Speedtest'
     },
     { 
@@ -198,6 +190,19 @@ const BASE_RULE_PROVIDERS = {
     format: 'text',
     url: 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Epic/Epic.list',
     path: './ruleset/blackmatrix7/Epic.list'
+  },
+  // 新增自定义规则集
+  own_direct: {
+    behavior: 'classical',
+    format: 'text',
+    url: CONFIG.CUSTOM_RULES.DIRECT,
+    path: './ruleset/custom/own_direct.list'
+  },
+  own_proxy: {
+    behavior: 'classical',
+    format: 'text',
+    url: CONFIG.CUSTOM_RULES.PROXY,
+    path: './ruleset/custom/own_proxy.list'
   }
 };
 
@@ -295,6 +300,14 @@ const RuleManager = {
    */
   buildRules() {
     const rules = [...RULE_CONFIG.PRE_RULES];
+    
+    // 添加自定义规则（高优先级）
+    if (FEATURE_FLAGS.customRules) {
+      rules.push(
+        'RULE-SET,own_direct,自定义直连',
+        'RULE-SET,own_proxy,自定义代理'
+      );
+    }
     
     // 添加功能规则
     this.addFeatureRules(rules);
@@ -437,7 +450,7 @@ const NodeManager = {
 };
 
 /**
- * 策略组构建器（优化：按需构建）
+ * 策略组构建器（修复循环依赖）
  */
 const PolicyBuilder = {
   /**
@@ -487,7 +500,32 @@ const PolicyBuilder = {
   },
 
   /**
-   * 构建应用策略组（按需构建）
+   * 构建自定义策略组（修复循环依赖）
+   */
+  buildCustomGroups() {
+    if (!FEATURE_FLAGS.customRules) return [];
+    
+    return [
+      // 自定义直连组
+      GroupFactory.createBaseGroup({
+        name: '自定义直连',
+        type: 'select',
+        proxies: ['直连', '国内网站'], // 移除了代理模式
+        icon: `${CONFIG.ICON_BASE_URL}Direct.png`
+      }),
+      
+      // 自定义代理组
+      GroupFactory.createBaseGroup({
+        name: '自定义代理',
+        type: 'select',
+        proxies: ['其他外网', '国内网站', '直连','延迟优选'], // 移除了代理模式
+        icon: `${CONFIG.ICON_BASE_URL}Proxy.png`
+      })
+    ];
+  },
+
+  /**
+   * 构建应用策略组（修复循环依赖）
    */
   buildAppGroups(regionGroups) {
     const regionGroupNames = regionGroups.map(g => g.name);
@@ -498,7 +536,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Notion办公',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Notion.png`
       }));
     }
@@ -508,7 +546,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '国外AI',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.OPENAI,
         icon: `${CONFIG.ICON_BASE_URL}ChatGPT.png`
       }));
@@ -519,7 +557,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'YouTube',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.YOUTUBE,
         icon: `${CONFIG.ICON_BASE_URL}YouTube.png`
       }));
@@ -530,7 +568,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Telegram',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: 'http://www.telegram.org/img/website_icon.svg',
         icon: `${CONFIG.ICON_BASE_URL}Telegram.png`
       }));
@@ -541,7 +579,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '游戏专用',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Game.png`
       }));
     }
@@ -551,7 +589,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '跟踪分析',
         type: 'select',
-        proxies: ['拒绝', '直连', '代理模式'],
+        proxies: ['拒绝', '直连'], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Reject.png`
       }));
     }
@@ -561,7 +599,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '广告过滤',
         type: 'select',
-        proxies: ['拒绝', '直连', '代理模式'],
+        proxies: ['拒绝', '直连'], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Advertising.png`
       }));
     }
@@ -571,7 +609,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '苹果服务',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.APPLE,
         icon: `${CONFIG.ICON_BASE_URL}Apple_2.png`
       }));
@@ -582,7 +620,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '谷歌服务',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.GOOGLE,
         icon: `${CONFIG.ICON_BASE_URL}Google_Search.png`
       }));
@@ -593,7 +631,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '微软服务',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.MICROSOFT,
         icon: `${CONFIG.ICON_BASE_URL}Microsoft.png`
       }));
@@ -604,7 +642,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Github',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         url: CONFIG.TEST_URLS.GITHUB,
         icon: `${CONFIG.ICON_BASE_URL}GitHub.png`
       }));
@@ -615,7 +653,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '虚幻引擎',
         type: 'select',
-        proxies: ['代理模式', ...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连'], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Download.png`
       }));
     }
@@ -624,7 +662,7 @@ const PolicyBuilder = {
   },
 
   /**
-   * 构建基础策略组
+   * 构建基础策略组（修复循环依赖）
    */
   buildBasicGroups(regionGroups) {
     const regionGroupNames = regionGroups.map(g => g.name);
@@ -634,7 +672,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '下载软件',
         type: 'select',
-        proxies: ['直连', '拒绝', '代理模式', '国内网站', ...regionGroupNames],
+        proxies: ['直连', '拒绝', '国内网站', ...regionGroupNames], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Download.png`
       }),
       
@@ -642,7 +680,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '其他外网',
         type: 'select',
-        proxies: ['代理模式', '国内网站', ...regionGroupNames],
+        proxies: ['国内网站', ...regionGroupNames], // 移除了代理模式
         icon: `${CONFIG.ICON_BASE_URL}Streaming!CN.png`
       }),
       
@@ -650,7 +688,7 @@ const PolicyBuilder = {
       GroupFactory.createAppGroup({
         name: '国内网站',
         type: 'select',
-        proxies: ['直连', '代理模式', ...regionGroupNames],
+        proxies: ['直连', ...regionGroupNames], // 移除了代理模式
         url: CONFIG.TEST_URLS.CHINA,
         icon: `${CONFIG.ICON_BASE_URL}StreamingCN.png`
       })
@@ -745,7 +783,7 @@ const MainController = {
   },
 
   /**
-   * 主处理函数（优化：逻辑分层）
+   * 主处理函数（修复循环依赖）
    */
   process(config) {
     // 总开关检查
@@ -770,12 +808,14 @@ const MainController = {
     
     // 第三阶段：策略组构建
     const coreGroups = PolicyBuilder.buildCoreGroups(regionGroups, ungrouped);
+    const customGroups = PolicyBuilder.buildCustomGroups();
     const appGroups = PolicyBuilder.buildAppGroups(regionGroups);
     const basicGroups = PolicyBuilder.buildBasicGroups(regionGroups);
     
     // 组合所有策略组
     config['proxy-groups'] = [
       ...coreGroups,
+      ...customGroups,
       ...appGroups,
       ...basicGroups,
       ...regionGroups
@@ -814,6 +854,8 @@ const MainController = {
       manualSelectGroup.proxies = config.proxies
         .filter(p => p.type !== 'direct' && p.type !== 'reject')
         .map(p => p.name);
+        
+      // 不再添加自定义组到手动选择组
     }
     
     // 第四阶段：规则处理（延迟加载）
