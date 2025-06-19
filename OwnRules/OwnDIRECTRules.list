@@ -1,0 +1,5 @@
+# 自定义直连规则
+
+
+DOMAIN-SUFFIX,linux.do
+DOMAIN-SUFFIX,download1.akamaized.net
