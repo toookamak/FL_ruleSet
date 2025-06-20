@@ -123,8 +123,8 @@ const REGION_CONFIG = {
     { 
       name: '原生IP/家宽',  // 家宽节点组（最高优先级）
       regex: /原生|家宽|住宅|home|residential/i, 
-      ratioLimit: 100,      // 倍率限制（100表示无限制）
-      icon: 'Home'          // 图标名称
+      ratioLimit: 10,      // 倍率限制（100表示无限制）
+      icon: 'VIP'          // 图标名称
     },
     { 
       name: '低倍率',       // 低倍率节点组
@@ -185,7 +185,7 @@ const DNS_CONFIG = {
   'fake-ip-range': '198.18.0.1/16',
   'fake-ip-filter': ['*', '+.lan', '+.local', '+.market.xiaomi.com'], // 不使用fake-ip的域名
   nameserver: ['https://120.53.53.53/dns-query', 'https://223.5.5.5/dns-query'], // 默认DNS
-  'proxy-server-nameserver': ['https://120.53.53.53/dns-query', 'https://223.5.5.5/dns-query'], // 代理模式DNS
+  'proxy-server-nameserver': ['https://1.1.1.1/dns-query', 'https://223.5.5.5/dns-query'], // 代理模式DNS
   'ssl-verification': true,
   cache: true,
   'cache-size': 4096, // DNS缓存大小
