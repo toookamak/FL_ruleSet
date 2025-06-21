@@ -347,7 +347,7 @@ function overwriteProxyGroups(params) {
         // 广告拦截
         createProxyGroup(AD_BLOCKING, "select", {
             category: GROUP_CATEGORY.SERVICE,
-            proxies: ["REJECT"],
+            proxies: ["REJECT","DIRECT"],
             icon: "https://fastly.jsdelivr.net/gh/clash-verge-rev/clash-verge-rev.github.io@main/docs/assets/icons/adblock.svg"
         })
     ];
