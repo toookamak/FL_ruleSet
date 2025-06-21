@@ -886,7 +886,7 @@ function overwriteDns(params) {
         "use-system-hosts": false,
         ipv6: false,
         "fake-ip-filter": [
-            "*", "*.lan", "*.local",
+            "*.lan", "*.local",
             "time.*.com", "ntp.*.com",
             "*.market.xiaomi.com",
             "localhost.ptlogin2.qq.com",
@@ -901,9 +901,12 @@ function overwriteDns(params) {
             "https://doh.pub/dns-query"
         ],
         "proxy-server-nameserver": [
-          "https://1.1.1.1/dns-query",
-          "tls://dot.pub/dns-query"
-        ]
+          'https://1.1.1.1/dns-query', 'https://223.5.5.5/dns-query'
+        ],
+        "nameserver-policy": { // 特定域名DNS策略
+            'geosite:private': 'system',
+            'geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn': ['119.29.29.29', '223.5.5.5']
+  }
     };
 }
 
