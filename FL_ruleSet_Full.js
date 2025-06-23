@@ -571,7 +571,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '自定义直连',
         type: 'select',
-        proxies: ['直连', '国内网站'], // 无循环依赖
+        proxies: ['直连', '延迟优选', '拒绝'], // 无循环依赖
         icon: `${CONFIG.ICON_BASE_URL}Direct.png`
       }),
       
@@ -579,7 +579,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '自定义代理',
         type: 'select',
-        proxies: ['其他外网', '国内网站', '直连', '延迟优选'], 
+        proxies: ['直连', '延迟优选','拒绝'], 
         icon: `${CONFIG.ICON_BASE_URL}Proxy.png`
       })
     ];
@@ -601,7 +601,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Notion办公',
         type: 'select',
-        proxies: [...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连','拒绝'],
         icon: `${CONFIG.ICON_BASE_URL}Notion.png`
       }));
     }
@@ -611,7 +611,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '国外AI',
         type: 'select',
-        proxies: [...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连','拒绝'],
         url: CONFIG.TEST_URLS.OPENAI,
         icon: `${CONFIG.ICON_BASE_URL}ChatGPT.png`
       }));
@@ -622,7 +622,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'YouTube',
         type: 'select',
-        proxies: [...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连','拒绝'],
         url: CONFIG.TEST_URLS.YOUTUBE,
         icon: `${CONFIG.ICON_BASE_URL}YouTube.png`
       }));
@@ -633,7 +633,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Telegram',
         type: 'select',
-        proxies: [...regionGroupNames, '直连'],
+        proxies: [...regionGroupNames, '直连','拒绝'],
         url: 'http://www.telegram.org/img/website_icon.svg',
         icon: `${CONFIG.ICON_BASE_URL}Telegram.png`
       }));
@@ -644,7 +644,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '跟踪分析',
         type: 'select',
-        proxies: ['拒绝', '直连'],
+        proxies: ['拒绝', '直连','延迟优选'],
         icon: `${CONFIG.ICON_BASE_URL}Reject.png`
       }));
     }
@@ -654,7 +654,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '广告过滤',
         type: 'select',
-        proxies: ['拒绝', '直连'],
+        proxies: ['拒绝', '直连','延迟优选'],
         icon: `${CONFIG.ICON_BASE_URL}Advertising.png`
       }));
     }
