@@ -550,7 +550,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '故障转移',
         type: 'fallback',
-        proxies: [...regionGroupNames],
+        proxies: ['延迟优选',...regionGroupNames],
         icon: `${CONFIG.ICON_BASE_URL}Final.png`
       })
     ];
@@ -601,7 +601,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Notion办公',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         icon: `${CONFIG.ICON_BASE_URL}Notion.png`
       }));
     }
@@ -611,7 +611,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '国外AI',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.OPENAI,
         icon: `${CONFIG.ICON_BASE_URL}ChatGPT.png`
       }));
@@ -622,7 +622,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'YouTube',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.YOUTUBE,
         icon: `${CONFIG.ICON_BASE_URL}YouTube.png`
       }));
@@ -633,7 +633,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Telegram',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: 'http://www.telegram.org/img/website_icon.svg',
         icon: `${CONFIG.ICON_BASE_URL}Telegram.png`
       }));
@@ -664,7 +664,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '苹果服务',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.APPLE,
         icon: `${CONFIG.ICON_BASE_URL}Apple_2.png`
       }));
@@ -675,7 +675,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '谷歌服务',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.GOOGLE,
         icon: `${CONFIG.ICON_BASE_URL}Google_Search.png`
       }));
@@ -686,7 +686,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '微软服务',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.MICROSOFT,
         icon: `${CONFIG.ICON_BASE_URL}Microsoft.png`
       }));
@@ -697,7 +697,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: 'Github',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.GITHUB,
         icon: `${CONFIG.ICON_BASE_URL}GitHub.png`
       }));
@@ -708,7 +708,7 @@ const PolicyBuilder = {
       appGroups.push(GroupFactory.createAppGroup({
         name: '虚幻引擎',
         type: 'select',
-        proxies: ['代理模式','手动选择',...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择',...regionGroupNames,'故障转移','直连', '拒绝'],
         icon: `${CONFIG.ICON_BASE_URL}Download.png`
       }));
     }
@@ -732,7 +732,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '下载软件',
         type: 'select',
-        proxies: ['代理模式','手动选择', ...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择', ...regionGroupNames,'故障转移','直连', '拒绝'],
         icon: `${CONFIG.ICON_BASE_URL}Download.png`
       }),
       
@@ -740,7 +740,7 @@ const PolicyBuilder = {
       GroupFactory.createBaseGroup({
         name: '其他外网',
         type: 'select',
-        proxies: ['代理模式','手动选择', ...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择', ...regionGroupNames,'故障转移','直连', '拒绝'],
         icon: `${CONFIG.ICON_BASE_URL}Streaming!CN.png`
       }),
       
@@ -748,7 +748,7 @@ const PolicyBuilder = {
       GroupFactory.createAppGroup({
         name: '国内网站',
         type: 'select',
-        proxies: ['代理模式','手动选择', ...regionGroupNames,'延迟优选','故障转移','直连', '拒绝'],
+        proxies: ['代理模式','手动选择', ...regionGroupNames,'故障转移','直连', '拒绝'],
         url: CONFIG.TEST_URLS.CHINA,
         icon: `${CONFIG.ICON_BASE_URL}StreamingCN.png`
       })
