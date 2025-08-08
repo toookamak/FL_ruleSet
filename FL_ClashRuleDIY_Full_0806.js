@@ -1,113 +1,159 @@
+// FL_ClashRuleDIY_Full_0806.js
 // FL_Clash_Rule_DIY.js - 策略组优化版
 // 优化：直接使用完整规则URL，便于维护
 // 特点：所有规则集使用完整URL，图标使用完整URL
-// 版本：v7.2.0
-// 最后更新：2024-01-20
-
-// ===================== 全局配置常量 =====================
-// 定义网络连通性测试URL
-const TEST_URL = "http://www.gstatic.com/generate_204";
-// 定义不同地区专用的测试URL，提高测试准确性
-const REGION_TEST_URLS = {
-    HK: "http://www.gstatic.com/generate_204",  // 香港测试点
-    SG: "http://www.gstatic.com/generate_204",  // 新加坡测试点
-    JP: "http://www.gstatic.com/generate_204",  // 日本测试点
-    US: "http://www.gstatic.com/generate_204"   // 美国测试点
-};
-
-// ===================== 策略组分类常量 =====================
-// 定义策略组的分类，用于后续排序和管理
-const GROUP_CATEGORY = {
-  CORE: "核心路由",           // 核心路由策略组
-  REGION_ENTRY: "地区选择",    // 地区选择入口策略组
-  REGION: "具体地区",         // 具体地区策略组
-  LINE_TYPE: "线路特性",      // 线路特性策略组
-  SERVICE: "服务专用",        // 服务专用策略组
-  TRAFFIC: "流量管理",        // 流量管理策略组
-  CUSTOM: "自定义规则",       // 自定义规则策略组
-  DEFAULT_ROUTE: "默认路由"   // 默认路由策略组
+// 版本：v8.0.0
+// 最后更新：2024-08-06
+// ===================== 待       办 =====================
+// 1.完善规则集，尽量统一规则集仓库
+// ===================== 配置管理中心 =====================
+/**
+ * 统一配置管理器 - 集中管理所有可配置参数
+ * 修改建议：
+ * - UPDATE_INTERVALS：更新间隔，数值越大更新越慢但节省流量
+ *   - 改小(如3600)：规则更新更频繁，但消耗更多网络资源
+ *   - 改大(如172800)：规则更新较慢，但节省网络流量
+ * - TEST_URL：延迟测试URL，可修改为其他稳定测试点
+ * - CDN_SOURCES：图标CDN源，可添加自定义CDN地址
+ */
+const CONFIG_MANAGER = {
+    // 基础配置常量
+    TEST_URL: "http://www.gstatic.com/generate_204", // 延迟测试URL，用于策略组自动选择节点
+    REGION_TEST_URLS: {
+        HK: "http://www.gstatic.com/generate_204",   // 香港地区测试URL
+        SG: "http://www.gstatic.com/generate_204",   // 新加坡地区测试URL
+        JP: "http://www.gstatic.com/generate_204",   // 日本地区测试URL
+        US: "http://www.gstatic.com/generate_204"    // 美国地区测试URL
+    },
+    
+    // 更新间隔配置（统一设置为24小时）
+    UPDATE_INTERVALS: {
+        DEFAULT: 86400,   // 默认更新间隔：24小时(86400秒)
+        CRITICAL: 86400,  // 关键规则更新间隔：24小时
+        STATIC: 86400     // 静态规则更新间隔：24小时
+    },
+    
+    // 策略组分类配置
+    GROUP_CATEGORY: {
+        CORE: "核心路由",        // 核心路由策略组
+        REGION_ENTRY: "地区选择", // 地区选择入口策略组
+        REGION: "具体地区",      // 具体地区策略组
+        LINE_TYPE: "线路特性",   // 线路特性策略组
+        SERVICE: "服务专用",     // 服务专用策略组
+        TRAFFIC: "流量管理",     // 流量管理策略组
+        CUSTOM: "自定义规则",    // 自定义规则策略组
+        DEFAULT_ROUTE: "默认路由" // 默认路由策略组
+    },
+    
+    // 自定义规则URL配置
+    CUSTOM_RULES: {
+        PROXY_URL: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnPROXYRules.list", // 自定义代理规则URL
+        DIRECT_URL: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnDIRECTRules.list"  // 自定义直连规则URL
+    },
+    
+    // CDN源配置（动态图标加载支持）
+    CDN_SOURCES: {
+        PRIMARY: "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/",  // 主CDN源
+        BACKUP: "https://ghproxy.com/https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/", // 备用CDN源
+        LOCAL: "./icons/"  // 本地图标路径
+    }
 };
 
 // ===================== 策略组命名常量 =====================
-// 定义所有策略组的标准化名称，便于统一管理和维护
+/**
+ * 所有策略组名称定义，便于统一管理和维护
+ * 修改建议：
+ * - 可以根据个人喜好修改策略组中文名称
+ * - 不建议修改英文常量名，会影响代码逻辑
+ */
 const GLOBAL_ROUTING = "代理模式";                    // 核心代理模式入口
 const MANUAL_REGION_SELECT = "手动选择 (地区)";       // 手动选择地区入口
-const AUTO_REGION_SELECT = "自动选择 (地区)";         // 自动选择地区入口
 const RESIDENTIAL_LINE = "家宽/原生线路";             // 家宽/原生IP线路
 const LOW_RATE_NODE = "低倍率节点";                  // 低倍率优惠节点
 const INSTANT_MESSAGING = "即时通讯";                // 即时通讯服务
 const AI_SERVICE = "AI服务";                         // AI相关服务
 const PLATFORM_SERVICE = "平台服务";                 // 平台类服务
-const AD_BLOCKING = "广告拦截";                      // 广告拦截服务（包含跟踪器和程序化广告）
+const AD_BLOCKING = "广告拦截";                      // 广告拦截服务（包含跟踪器）
 const TRACKING_BLOCKING = "拦截跟踪";                // 跟踪器拦截服务
-const PROGRAMMATIC_ADS = "程序化广告";               // 程序化广告拦截服务
 const HIGH_TRAFFIC_CHANNEL = "大流量通道";           // 大流量传输通道
 const OFFICE_SERVICE = "网络办公";                   // 网络办公服务（包含OneDrive和GitHub）
 const VIDEO_SERVICE = "视频服务";                    // 视频流媒体服务
 const GOOGLE_SERVICE = "谷歌服务";                   // 谷歌相关服务
 const MICROSOFT_SERVICE = "微软服务";                // 微软相关服务
-const GITHUB_SERVICE = "GitHub服务";                // GitHub相关服务（已并入网络办公）
-const ONEDRIVE_SERVICE = "OneDrive服务";            // OneDrive云存储服务（已并入网络办公）
 const UNREAL_ENGINE = "虚幻引擎";                    // 虚幻引擎相关服务
 const CUSTOM_PROXY_RULE = "自定义代理规则";          // 用户自定义代理规则
 const CUSTOM_DIRECT_RULE = "自定义直连规则";         // 用户自定义直连规则
 const DOMESTIC_TRAFFIC = "国内流量";                 // 国内网络流量
 const GLOBAL_TRAFFIC = "国际流量";                   // 国际网络流量
 
-// ===================== 图标库URL常量 =====================
-// 使用Koolson/Qure图标库
-const ICON_BASE_URL = "https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/";
-
-// 定义各策略组对应的图标
-const ICONS = {
-    // 核心路由图标
-    GLOBAL_ROUTING: ICON_BASE_URL + "Proxy.png",        // 代理模式
-    MANUAL_REGION: ICON_BASE_URL + "Global.png",        // 手动选择
-    AUTO_REGION: ICON_BASE_URL + "Auto.png",            // 自动选择
-    SPEED_TEST: ICON_BASE_URL + "Speedtest.png",        // 延迟优选
-    FAILOVER: ICON_BASE_URL + "Final.png",              // 故障转移
-    LOAD_BALANCE: ICON_BASE_URL + "Balance.png",        // 负载均衡
-    HOME_NETWORK: ICON_BASE_URL + "VIP.png",           // 家宽线路
-    LOW_RATE: ICON_BASE_URL + "Speedtest.png",          // 低倍率节点
-    
-    // 地区图标
-    HK: ICON_BASE_URL + "Hong_Kong.png",                // 香港
-    SG: ICON_BASE_URL + "Singapore.png",                // 新加坡
-    JP: ICON_BASE_URL + "Japan.png",                    // 日本
-    US: ICON_BASE_URL + "United_States.png",            // 美国
-    GLOBAL: ICON_BASE_URL + "World_Map.png",            // 全球/其他地区
-    
-    // 服务专用图标
-    OFFICE: ICON_BASE_URL + "Notion.png",               // 网络办公
-    TELEGRAM: ICON_BASE_URL + "Telegram.png",           // 即时通讯
-    AI: ICON_BASE_URL + "ChatGPT.png",                  // AI服务
-    CLOUD: ICON_BASE_URL + "Server.png",                 // 平台服务
-    VIDEO: ICON_BASE_URL + "YouTube.png",               // 视频服务
-    GOOGLE: ICON_BASE_URL + "Google_Search.png",        // 谷歌服务
-    MICROSOFT: ICON_BASE_URL + "Microsoft.png",         // 微软服务
-    UNREAL: ICON_BASE_URL + "Download.png",             // 虚幻引擎
-    
-    // 广告拦截图标
-    AD_BLOCK: ICON_BASE_URL + "Advertising.png",        // 广告拦截
-    TRACKING: ICON_BASE_URL + "Reject.png",             // 拦截跟踪
-    PROGRAMMATIC_ADS: ICON_BASE_URL + "Advertising.png", // 程序化广告
-    
-    // 流量管理图标
-    DOWNLOAD: ICON_BASE_URL + "Download.png",           // 大流量通道
-    
-    // 自定义规则图标
-    CUSTOM_PROXY: ICON_BASE_URL + "Proxy.png",          // 自定义代理规则
-    CUSTOM_DIRECT: ICON_BASE_URL + "Direct.png",        // 自定义直连规则
-    
-    // 默认路由图标
-    DOMESTIC: ICON_BASE_URL + "StreamingCN.png",        // 国内流量
-    INTERNATIONAL: ICON_BASE_URL + "Streaming!CN.png"   // 国际流量
+// ===================== 缓存管理 =====================
+/**
+ * 全局缓存对象，用于提高性能，避免重复计算
+ * 说明：
+ * - proxyGroups: 策略组配置缓存
+ * - availableRegions: 可用地区缓存
+ * - residentialProxies: 家宽节点缓存
+ * - lowRateProxies: 低倍率节点缓存
+ * - ruleProviders: 规则提供器配置缓存
+ */
+const CACHE = {
+    proxyGroups: null,
+    availableRegions: null,
+    residentialProxies: null,
+    lowRateProxies: null,
+    ruleProviders: null
 };
 
-// ===================== 自定义规则URL =====================
-// 定义用户自定义规则的远程URL地址
-const CUSTOM_PROXY_RULES_URL = "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnPROXYRules.list";
-const CUSTOM_DIRECT_RULES_URL = "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnDIRECTRules.list";
+// ===================== 图标配置 =====================
+/**
+ * 策略组图标配置，支持多CDN源动态加载
+ * 修改建议：
+ * - 可以替换为其他图标库的URL
+ * - 图标文件名需确保与图标库中文件名一致
+ * - 建议保持相同的图标风格以保证视觉一致性
+ */
+const ICONS = {
+    // 核心路由图标
+    GLOBAL_ROUTING: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Proxy.png",          // 代理模式
+    MANUAL_REGION: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Global.png",          // 手动选择
+    SPEED_TEST: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Speedtest.png",          // 延迟优选
+    FAILOVER: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Final.png",                // 故障转移
+    LOAD_BALANCE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Balance.png",          // 负载均衡
+    HOME_NETWORK: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "VIP.png",              // 家宽线路
+    LOW_RATE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Speedtest.png",            // 低倍率节点
+    
+    // 地区图标
+    HK: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Hong_Kong.png",                  // 香港
+    SG: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Singapore.png",                  // 新加坡
+    JP: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Japan.png",                      // 日本
+    US: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "United_States.png",              // 美国
+    GLOBAL: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "World_Map.png",              // 全球/其他地区
+    
+    // 服务专用图标
+    OFFICE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Notion.png",                 // 网络办公
+    TELEGRAM: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Telegram.png",             // 即时通讯
+    AI: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "ChatGPT.png",                    // AI服务
+    CLOUD: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Server.png",                  // 平台服务
+    VIDEO: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "YouTube.png",                 // 视频服务
+    GOOGLE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Google_Search.png",          // 谷歌服务
+    MICROSOFT: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Microsoft.png",           // 微软服务
+    UNREAL: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Download.png",               // 虚幻引擎
+    
+    // 广告拦截图标
+    AD_BLOCK: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Advertising.png",          // 广告拦截
+    TRACKING: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Reject.png",               // 拦截跟踪
+    
+    // 流量管理图标
+    DOWNLOAD: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Download.png",             // 大流量通道
+    
+    // 自定义规则图标  
+    CUSTOM_PROXY: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Proxy.png",            // 自定义代理规则
+    CUSTOM_DIRECT: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Direct.png",          // 自定义直连规则
+    
+    // 默认路由图标
+    DOMESTIC: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "StreamingCN.png",          // 国内流量
+    INTERNATIONAL: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Streaming!CN.png"     // 国际流量
+};
 
 /**
  * 主入口函数 - 处理Clash配置文件
@@ -126,17 +172,38 @@ const main = (params) => {
     overwriteDns(params);               // 覆盖DNS配置
     overwriteTunnel(params);            // 覆盖TUN配置
     
+    // 清理缓存，释放内存
+    clearCache();
+    
     // 返回处理完成的配置对象
     return params;
 };
 
+// ===================== 缓存管理函数 =====================
+/**
+ * 清理缓存函数
+ * 说明：每次执行完配置处理后清理缓存，防止内存泄漏
+ * 修改建议：一般不需要修改
+ */
+function clearCache() {
+    CACHE.proxyGroups = null;
+    CACHE.availableRegions = null;
+    CACHE.residentialProxies = null;
+    CACHE.lowRateProxies = null;
+    CACHE.ruleProviders = null;
+}
+
 // ===================== 基础设置模块 =====================
 /**
  * 覆盖基础配置选项
+ * 说明：设置Clash核心运行参数
+ * 修改建议：
+ * - mixed-port: 可修改为其他端口号，避免端口冲突
+ * - allow-lan: 设为false可禁止局域网设备使用代理
+ * - tcp-concurrent: 设为false可降低资源消耗但可能影响性能
  * @param {Object} params - 配置参数对象
  */
 function overwriteBasicOptions(params) {
-    // 使用Object.assign合并配置，保留原有配置并覆盖指定项
     Object.assign(params, {
         "mixed-port": 7890,                     // 混合端口，支持HTTP和SOCKS代理
         "allow-lan": true,                      // 允许局域网访问
@@ -163,10 +230,14 @@ function overwriteBasicOptions(params) {
 // ===================== 流量嗅探设置 =====================
 /**
  * 覆盖流量嗅探配置
+ * 说明：设置流量嗅探器参数，用于自动识别和处理加密流量
+ * 修改建议：
+ * - enable: 设为false可关闭流量嗅探功能
+ * - ports: 可添加或删除需要嗅探的端口
+ * - skip-domain: 可添加需要跳过嗅探的域名
  * @param {Object} params - 配置参数对象
  */
 function overwriteSniffer(params) {
-    // 设置流量嗅探器配置
     params.sniffer = {
         enable: true,                           // 启用流量嗅探
         "force-dns-mapping": true,              // 强制DNS映射
@@ -194,136 +265,162 @@ function overwriteSniffer(params) {
 // ===================== 代理组配置模块 =====================
 /**
  * 覆盖代理组配置
+ * 说明：核心策略组配置函数，构建完整的代理组结构
+ * 修改建议：
+ * - 一般不需要修改此函数逻辑
+ * - 如需添加新的策略组，请修改相关子函数
  * @param {Object} params - 配置参数对象
  */
 function overwriteProxyGroups(params) {
-    // 地区配置（移除台湾），定义支持的地区及其匹配规则
-    const COUNTRY_REGIONS = [
+    // 检查缓存，如果已有结果则直接使用
+    if (CACHE.proxyGroups) {
+        params["proxy-groups"] = CACHE.proxyGroups;
+        params.__hasResidential = CACHE.residentialProxies && CACHE.residentialProxies.length > 0;
+        params.__hasLowRate = CACHE.lowRateProxies && CACHE.lowRateProxies.length > 0;
+        return;
+    }
+    
+    // 地区分组配置
+    const COUNTRY_REGIONS = createRegionalConfig();
+    
+    // 获取有效代理和节点分类
+    const { allProxies, availableRegions, residentialProxies, lowRateProxies, hasResidential, hasLowRate, hasOtherProxies } = 
+        processProxyNodes(params, COUNTRY_REGIONS);
+    
+    // 存储到缓存
+    CACHE.residentialProxies = residentialProxies;
+    CACHE.lowRateProxies = lowRateProxies;
+    
+    // 创建各类策略组
+    const coreGroups = createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
+    const regionEntryGroups = createRegionEntryGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
+    const { autoSelectGroups, manualSelectGroups, otherAutoGroup, otherManualGroup } = 
+        createRegionalGroups(params, COUNTRY_REGIONS, availableRegions);
+    const lineTypeGroups = createLineTypeGroups(hasResidential, residentialProxies, hasLowRate, lowRateProxies);
+    const serviceGroups = createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies); // 增强服务策略组
+    const trafficGroups = createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies);
+    const customRuleGroups = createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies);
+    const defaultRouteGroups = createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies);
+    
+    // 合并所有代理组 - 按照优化后的顺序排列（服务策略组靠前，地区策略组靠后）
+    const allGroups = [
+        ...coreGroups,
+        ...serviceGroups,           // 服务策略组靠前
+        ...lineTypeGroups,
+        ...trafficGroups, 
+        ...customRuleGroups,
+        ...defaultRouteGroups,
+        ...regionEntryGroups,       // 地区选择入口
+        ...manualSelectGroups,      // 地区手动选择组
+        ...autoSelectGroups,        // 地区自动选择组
+        ...(otherManualGroup ? [otherManualGroup] : []),
+        ...(otherAutoGroup ? [otherAutoGroup] : [])
+    ];
+    
+    // 存储到缓存和参数（保持原有分类排序逻辑以确保规则执行顺序）
+    CACHE.proxyGroups = allGroups;
+    params["proxy-groups"] = allGroups;
+    params.__hasResidential = hasResidential;
+    params.__hasLowRate = hasLowRate;
+}
+
+/**
+ * 创建地区配置
+ * 说明：定义支持的地区及其匹配规则
+ * 修改建议：
+ * - 可以添加或删除支持的地区
+ * - regex: 修改正则表达式以适配不同的节点命名规则
+ * - ratioLimit: 修改倍率限制值以调整筛选严格程度
+ */
+function createRegionalConfig() {
+    return [
         { 
             code: "HK",                         // 地区代码
             name: "香港",                        // 地区名称
-            icon: ICONS.HK,                     // 使用图标库中的香港图标
-            regex: /(香港|HK|Hong Kong|🇭🇰)/i    // 匹配该地区的正则表达式
+            icon: ICONS.HK,                     // 地区图标
+            regex: /(香港|HK|Hong Kong|🇭🇰)/i    // 匹配正则表达式
         },
         {
             code: "SG", 
             name: "新加坡",
-            icon: ICONS.SG,                     // 使用图标库中的新加坡图标
+            icon: ICONS.SG,
             regex: /(新加坡|狮城|SG|Singapore|🇸🇬)/i
         },
         {
             code: "JP", 
             name: "日本",
-            icon: ICONS.JP,                     // 使用图标库中的日本图标
+            icon: ICONS.JP,
             regex: /(日本|JP|Japan|🇯🇵)/i
         },
         {
             code: "US", 
-            name: "美国",
-            icon: ICONS.US,                     // 使用图标库中的美国图标
+            name: "美国", 
+            icon: ICONS.US,
             regex: /(美国|US|USA|United States|America|🇺🇸)/i
         }
     ];
+}
 
-    // 获取有效代理，过滤掉包含特定关键词的节点
-    const PROXY_REGEX = /^(?!.*(?:自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire)).*$/;
+/**
+ * 处理代理节点分类
+ * 说明：对所有代理节点进行分类和筛选
+ * 修改建议：
+ * - PROXY_REGEX: 可修改正则表达式以排除不需要的节点
+ * - RESIDENTIAL_REGEX: 可修改家宽节点匹配规则
+ * - LOW_RATE_REGEX: 可修改低倍率节点匹配规则
+ */
+function processProxyNodes(params, COUNTRY_REGIONS) {
+    const PROXY_REGEX = /^(?!.*(?:自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire)).*$/; // 有效代理筛选正则
     const allProxies = getProxiesByRegex(params, PROXY_REGEX);  // 获取所有有效代理
-    const availableRegions = new Set();                         // 存储可用地区
+    const availableRegions = new Set();                         // 存储可用地区集合
+    const RESIDENTIAL_REGEX = /(家宽|原生|residential|home)/i;   // 家宽节点匹配正则
+    const LOW_RATE_REGEX = /(低倍率|lowrate|低-rate|倍率)/i;    // 低倍率节点匹配正则
     
-    // 节点过滤正则表达式，用于识别特殊类型节点
-    const RESIDENTIAL_REGEX = /(家宽|原生|residential|home)/i;   // 家宽/原生线路匹配
-    const LOW_RATE_REGEX = /(低倍率|lowrate|low-rate|倍率)/i;    // 低倍率节点匹配
-    
-    // 节点分类处理，识别各地区可用节点
+    // 遍历所有代理节点，识别归属地区
     params.proxies.forEach(proxy => {
-        // 查找代理节点所属地区
         const region = COUNTRY_REGIONS.find(r => r.regex.test(proxy.name));
-        // 如果找到匹配地区，则将该地区添加到可用地区集合中
         region ? availableRegions.add(region.name) : null;
     });
-
-    // 创建地区自动选择组，为每个可用地区创建自动测试选择组
-    const autoGroups = COUNTRY_REGIONS
-        .filter(r => availableRegions.has(r.name))  // 筛选有可用节点的地区
-        .map(region => createProxyGroup(
-            `${region.name} · 自动选择`,            // 策略组名称
-            "url-test",                             // 策略组类型为URL测试
-            {
-                category: GROUP_CATEGORY.REGION,    // 分类为具体地区
-                url: REGION_TEST_URLS[region.code] || TEST_URL,  // 使用地区专用测试URL
-                interval: 300,                      // 测试间隔300秒
-                tolerance: 50,                      // 延迟容忍度50ms
-                proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
-                hidden: true                        // 隐藏该策略组
-            }
-        ))
-        .filter(g => g.proxies.length > 0);         // 过滤掉没有节点的组
-
-    // 创建地区手动选择组，为每个可用地区创建手动选择组
-    const manualGroups = COUNTRY_REGIONS
-        .filter(r => availableRegions.has(r.name))  // 筛选有可用节点的地区
-        .map(region => createProxyGroup(
-            `${region.name} · 手动选择`,            // 策略组名称
-            "select",                               // 策略组类型为手动选择
-            {
-                category: GROUP_CATEGORY.REGION,    // 分类为具体地区
-                proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
-                icon: region.icon,                  // 使用图标库中的地区图标
-                hidden: false                       // 不隐藏该策略组
-            }
-        ))
-        .filter(g => g.proxies.length > 0);         // 过滤掉没有节点的组
-
-    // 获取其他地区节点（不属于上述地区的节点）
+    
+    // 获取家宽节点和低倍率节点
+    const residentialProxies = getProxiesByRegex(params, RESIDENTIAL_REGEX);
+    const lowRateProxies = getProxiesByRegex(params, LOW_RATE_REGEX);
+    const hasResidential = residentialProxies.length > 0;  // 是否存在家宽节点
+    const hasLowRate = lowRateProxies.length > 0;          // 是否存在低倍率节点
+    
+    // 检查是否有其他地区节点
+    const RESIDENTIAL_REGEX_CHECK = /(家宽|原生|residential|home)/i;
+    const LOW_RATE_REGEX_CHECK = /(低倍率|lowrate|低-rate|倍率)/i;
     const otherProxies = params.proxies
         .filter(proxy => 
-            // 过滤条件：不属于任何已定义地区 且 不是家宽线路 且 不是低倍率节点
             !COUNTRY_REGIONS.some(region => region.regex.test(proxy.name)) &&
-            !RESIDENTIAL_REGEX.test(proxy.name) &&
-            !LOW_RATE_REGEX.test(proxy.name)
+            !RESIDENTIAL_REGEX_CHECK.test(proxy.name) &&
+            !LOW_RATE_REGEX_CHECK.test(proxy.name)
         )
-        .map(proxy => proxy.name);                  // 提取节点名称
+        .map(proxy => proxy.name);
+    const hasOtherProxies = otherProxies.length > 0;
     
-    const hasOtherProxies = otherProxies.length > 0;  // 判断是否存在其他地区节点
-    
-    // 其他地区组（自动选择和手动选择）
-    const otherAutoGroup = hasOtherProxies ? createProxyGroup(
-        "其他地区 · 自动选择",                       // 自动选择其他地区节点
-        "url-test", 
-        {
-            category: GROUP_CATEGORY.REGION,
-            url: TEST_URL,                          // 使用默认测试URL
-            interval: 300,
-            tolerance: 50,
-            proxies: otherProxies,                  // 其他地区代理节点
-            hidden: true
-        }
-    ) : null;
-    
-    const otherManualGroup = hasOtherProxies ? createProxyGroup(
-        "其他地区 · 手动选择",                       // 手动选择其他地区节点
-        "select", 
-        {
-            category: GROUP_CATEGORY.REGION,
-            proxies: otherProxies,
-            icon: ICONS.GLOBAL,                     // 使用图标库中的全球图标
-            hidden: false
-        }
-    ) : null;
+    return {
+        allProxies,
+        availableRegions,
+        residentialProxies,
+        lowRateProxies,
+        hasResidential,
+        hasLowRate,
+        hasOtherProxies
+    };
+}
 
-    // 获取家宽/原生节点
-    const residentialProxies = getProxiesByRegex(params, RESIDENTIAL_REGEX);
-    const hasResidential = residentialProxies.length > 0;  // 判断是否存在家宽节点
-    
-    // 获取低倍率节点
-    const lowRateProxies = getProxiesByRegex(params, LOW_RATE_REGEX);
-    const hasLowRate = lowRateProxies.length > 0;          // 判断是否存在低倍率节点
-    
-    // ===== 基础选项数组（避免循环引用）=====
-    // 定义基础代理选项，避免策略组间的循环引用问题
+/**
+ * 创建基础选项数组
+ * 说明：创建基础代理选项，避免策略组间的循环引用
+ * 修改建议：
+ * - 可根据需要调整基础选项内容
+ * - 确保不会造成逻辑死循环
+ */
+function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies = false) {
     const baseOptions = [
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
-        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         "延迟优选",                                   // 延迟优选策略组
         "故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
@@ -333,274 +430,432 @@ function overwriteProxyGroups(params) {
         "DIRECT",                                     // 直连
         "REJECT"                                      // 拒绝连接
     ];
+    
+    // 如果有其他地区节点，添加其他地区手动选择
+    if (hasOtherProxies) {
+        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length + 2, 0, "其他地区 · 手动选择");
+    }
+    
+    return baseOptions;
+}
 
-    // ===== 核心路由策略组 =====
-    // 核心路由策略组定义，作为整个配置的核心入口
-    const coreGroups = [
+/**
+ * 创建核心策略组
+ * 说明：创建核心路由策略组，作为整个配置的核心入口
+ * 修改建议：
+ * - proxies: 可调整策略组优先级顺序
+ * - icon: 可更换图标文件
+ */
+function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate) {
+    const baseOptions = createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
+    
+    return [
         // 代理模式 - 总入口策略组
         createProxyGroup(GLOBAL_ROUTING, "select", {
-            category: GROUP_CATEGORY.CORE,          // 核心路由分类
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
             proxies: [
                 ...baseOptions,                     // 基础选项
-                MANUAL_REGION_SELECT,               // 手动选择地区入口
-                AUTO_REGION_SELECT                  // 自动选择地区入口
+                MANUAL_REGION_SELECT               // 手动选择地区入口
             ],
-            icon: ICONS.GLOBAL_ROUTING              // 使用图标库中的代理模式图标
+            icon: ICONS.GLOBAL_ROUTING              // 代理模式图标
         }),
         
         // 延迟优选 - 根据延迟自动选择最优节点
         createProxyGroup("延迟优选", "url-test", {
-            category: GROUP_CATEGORY.CORE,
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
-            icon: ICONS.SPEED_TEST,                 // 使用图标库中的速度测试图标
+            icon: ICONS.SPEED_TEST,                 // 延迟优选图标
             hidden: true                            // 隐藏该组
         }),
         
         // 故障转移 - 当主节点故障时自动切换到备选节点
         createProxyGroup("故障转移", "fallback", {
-            category: GROUP_CATEGORY.CORE,
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
-            icon: ICONS.FAILOVER,                   // 使用图标库中的故障转移图标
+            icon: ICONS.FAILOVER,                   // 故障转移图标
             hidden: true                            // 隐藏该组
         }),
         
         // 负载均衡 - 散列模式
         createProxyGroup("负载均衡 · 散列", "load-balance", {
-            category: GROUP_CATEGORY.CORE,
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             strategy: "consistent-hashing",         // 一致性哈希策略
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
-            icon: ICONS.LOAD_BALANCE,               // 使用图标库中的负载均衡图标
+            icon: ICONS.LOAD_BALANCE,               // 负载均衡图标
             hidden: true                            // 隐藏该组
         }),
         
         // 负载均衡 - 轮询模式
         createProxyGroup("负载均衡 · 轮询", "load-balance", {
-            category: GROUP_CATEGORY.CORE,
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             strategy: "round-robin",                // 轮询策略
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
-            icon: ICONS.LOAD_BALANCE,               // 使用图标库中的负载均衡图标
+            icon: ICONS.LOAD_BALANCE,               // 负载均衡图标
             hidden: true                            // 隐藏该组
         })
     ];
+}
 
-    // ===== 地区选择入口组 =====
-    // 地区选择入口策略组，提供用户选择地区的统一入口
-    const regionEntryGroups = [
+/**
+ * 创建地区入口策略组
+ * 说明：创建地区选择入口策略组，提供用户选择地区的统一入口
+ * 修改建议：
+ * - 可调整地区入口的显示顺序
+ * - 可添加更多备用选项
+ */
+function createRegionEntryGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate) {
+    const baseOptions = createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
+    const manualGroups = COUNTRY_REGIONS
+        .filter(r => availableRegions.has(r.name))
+        .map(r => `${r.name} · 手动选择`);
+    
+    const otherProxies = [...(hasResidential ? [RESIDENTIAL_LINE] : []), ...(hasLowRate ? [LOW_RATE_NODE] : [])];
+    
+    return [
         // 手动选择入口 - 用户手动选择具体地区的入口
         createProxyGroup(MANUAL_REGION_SELECT, "select", {
-            category: GROUP_CATEGORY.REGION_ENTRY,  // 地区选择分类
-            proxies: [
-                ...manualGroups.map(g => g.name),   // 所有地区手动选择组
-                ...(hasOtherProxies ? ["其他地区 · 手动选择"] : [])  // 其他地区手动选择（如果存在）
-            ],
-            icon: ICONS.MANUAL_REGION               // 使用图标库中的手动选择图标
-        }),
-        
-        // 自动选择入口 - 系统自动选择最优地区的入口
-        createProxyGroup(AUTO_REGION_SELECT, "select", {
-            category: GROUP_CATEGORY.REGION_ENTRY,  // 地区选择分类
-            proxies: [
-                ...autoGroups.map(g => g.name),     // 所有地区自动选择组
-                ...(hasOtherProxies ? ["其他地区 · 自动选择"] : [])  // 其他地区自动选择（如果存在）
-            ],
-            icon: ICONS.AUTO_REGION                 // 使用图标库中的自动选择图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.REGION_ENTRY,  // 地区选择分类
+            proxies: [...manualGroups, ...otherProxies, "DIRECT", "REJECT"],
+            icon: ICONS.MANUAL_REGION               // 手动选择图标
         })
     ];
+}
 
-    // ===== 地区自动选择组 =====
-    // 具体地区的自动选择策略组
-    const autoSelectGroups = autoGroups;
+/**
+ * 创建地区策略组
+ * 说明：创建具体地区的策略组，包括自动选择和手动选择
+ * 修改建议：
+ * - url: 可修改为地区专用测试URL以提高准确性
+ * - interval: 可调整测试间隔（秒），改小提高响应速度但增加资源消耗
+ * - tolerance: 可调整延迟容忍度（毫秒），改大减少切换频率
+ */
+function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
+    const RESIDENTIAL_REGEX = /(家宽|原生|residential|home)/i;
+    const LOW_RATE_REGEX = /(低倍率|lowrate|低倍率|倍率)/i;
     
-    // ===== 地区手动选择组 =====
-    // 具体地区的手动选择策略组
-    const manualSelectGroups = manualGroups;
+    const otherProxies = params.proxies
+        .filter(proxy => 
+            !COUNTRY_REGIONS.some(region => region.regex.test(proxy.name)) &&
+            !RESIDENTIAL_REGEX.test(proxy.name) &&
+            !LOW_RATE_REGEX.test(proxy.name)
+        )
+        .map(proxy => proxy.name);
     
-    // ===== 线路特性策略组 =====
-    // 特殊线路类型策略组
-    const lineTypeGroups = [
-        // 家宽/原生线路 - 提供更稳定、真实的IP线路
-        hasResidential ? createProxyGroup(RESIDENTIAL_LINE, "select", {
-            category: GROUP_CATEGORY.LINE_TYPE,     // 线路特性分类
-            icon: ICONS.HOME_NETWORK,               // 使用图标库中的家庭网络图标
+    const hasOtherProxies = otherProxies.length > 0;
+    
+    // 创建地区自动选择组
+    const autoGroups = COUNTRY_REGIONS
+        .filter(r => availableRegions.has(r.name))
+        .map(region => createProxyGroup(
+            `${region.name} · 自动选择`,            // 策略组名称
+            "url-test",                             // 策略组类型为URL测试
+            {
+                category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,    // 具体地区分类
+                url: CONFIG_MANAGER.REGION_TEST_URLS[region.code] || CONFIG_MANAGER.TEST_URL,  // 地区专用测试URL
+                interval: 3600,                      // 测试间隔600秒（省电优化）
+                tolerance: 50,                      // 延迟容忍度50ms
+                proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
+                hidden: true                        // 隐藏该策略组
+            }
+        ))
+        .filter(g => g.proxies.length > 0);
+    
+    // 创建地区手动选择组
+    const manualGroups = COUNTRY_REGIONS
+        .filter(r => availableRegions.has(r.name))
+        .map(region => createProxyGroup(
+            `${region.name} · 手动选择`,            // 策略组名称
+            "select",                               // 策略组类型为手动选择
+            {
+                category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,    // 具体地区分类
+                proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
+                icon: region.icon,                  // 地区图标
+                hidden: false                       // 不隐藏该策略组
+            }
+        ))
+        .filter(g => g.proxies.length > 0);
+    
+    // 其他地区组（自动选择和手动选择）
+    const otherAutoGroup = hasOtherProxies ? createProxyGroup(
+        "其他地区 · 自动选择",                       // 自动选择其他地区节点
+        "url-test", 
+        {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,
+            url: CONFIG_MANAGER.TEST_URL,           // 使用默认测试URL
+            interval: 3600,                          // 测试间隔600秒（省电优化）
+            tolerance: 50,                          // 延迟容忍度50ms
+            proxies: otherProxies,                  // 其他地区代理节点
+            hidden: true
+        }
+    ) : null;
+    
+    const otherManualGroup = hasOtherProxies ? createProxyGroup(
+        "其他地区 · 手动选择",                       // 手动选择其他地区节点
+        "select", 
+        {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,
+            proxies: otherProxies,
+            icon: ICONS.GLOBAL,                     // 全球图标
+            hidden: false
+        }
+    ) : null;
+    
+    return { autoSelectGroups: autoGroups, manualSelectGroups: manualGroups, otherAutoGroup, otherManualGroup };
+}
+
+/**
+ * 创建线路特性策略组
+ * 说明：创建特殊线路类型策略组，如家宽线路、低倍率节点等
+ * 修改建议：
+ * - proxies: 可调整线路节点的筛选条件
+ * - icon: 可更换图标文件
+ */
+function createLineTypeGroups(hasResidential, residentialProxies, hasLowRate, lowRateProxies) {
+    const groups = [];
+    
+    // 家宽/原生线路 - 提供更稳定、真实的IP线路
+    if (hasResidential) {
+        groups.push(createProxyGroup(RESIDENTIAL_LINE, "select", {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.LINE_TYPE,     // 线路特性分类
+            icon: ICONS.HOME_NETWORK,               // 家宽线路图标
             proxies: residentialProxies,            // 家宽线路节点
             hidden: false                           // 不隐藏该组
-        }) : null,
-        
-        // 低倍率节点 - 提供更经济的流量使用方案
-        hasLowRate ? createProxyGroup(LOW_RATE_NODE, "select", {
-            category: GROUP_CATEGORY.LINE_TYPE,     // 线路特性分类
-            icon: ICONS.LOW_RATE,                   // 使用图标库中的低倍率图标
+        }));
+    }
+    
+    // 低倍率节点 - 提供更经济的流量使用方案
+    if (hasLowRate) {
+        groups.push(createProxyGroup(LOW_RATE_NODE, "select", {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.LINE_TYPE,     // 线路特性分类
+            icon: ICONS.LOW_RATE,                   // 低倍率节点图标
             proxies: lowRateProxies,                // 低倍率节点
             hidden: false                           // 不隐藏该组
-        }) : null
-    ].filter(Boolean);  // 过滤掉null值
+        }));
+    }
+    
+    return groups;
+}
 
-    // ===== 服务专用策略组 =====
-    // 针对特定服务优化的策略组
-    const serviceGroups = [
-        // 网络办公服务 - 为办公场景优化的路由策略（包含OneDrive和GitHub）
+/**
+ * 创建服务策略组（完整版）
+ * 说明：创建针对特定服务优化的策略组，添加完整选项
+ * 修改建议：
+ * - proxies: 可调整服务策略的优先级顺序
+ * - icon: 可更换图标文件
+ */
+function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
+    // 创建完整选项，包含所有地区自动选择、手动选择和其他地区选项
+    const serviceOptions = [
+        GLOBAL_ROUTING,                             // 代理模式优先
+        "延迟优选",                                   // 延迟优选
+        "故障转移",                                   // 故障转移
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
+        ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
+        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
+        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        "DIRECT",                                   // 直连
+        "REJECT"                                    // 拒绝连接
+    ];
+    
+    return [
+        // 网络办公服务 - 为办公场景优化的路由策略
         createProxyGroup(OFFICE_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,       // 服务专用分类
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.OFFICE                      // 使用图标库中的Office图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.OFFICE                      // 网络办公图标
         }),
         
         // 即时通讯 - 为即时通讯应用优化的路由
         createProxyGroup(INSTANT_MESSAGING, "select", {
-            category: GROUP_CATEGORY.SERVICE,       // 服务专用分类
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.TELEGRAM                    // 使用图标库中的Telegram图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.TELEGRAM                    // 即时通讯图标
         }),
         
         // AI服务 - 为AI相关服务优化的路由
         createProxyGroup(AI_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.AI                          // 使用图标库中的AI图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.AI                          // AI服务图标
         }),
         
         // 平台服务 - 为各类平台服务优化的路由
         createProxyGroup(PLATFORM_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.CLOUD                       // 使用图标库中的云服务图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.CLOUD                       // 平台服务图标
         }),
         
         // 视频服务 - 为视频流媒体优化的路由
         createProxyGroup(VIDEO_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.VIDEO                       // 使用图标库中的视频图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.VIDEO                       // 视频服务图标
         }),
         
         // 谷歌服务 - 为谷歌相关服务优化的路由
         createProxyGroup(GOOGLE_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.GOOGLE                      // 使用图标库中的Google图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.GOOGLE                      // 谷歌服务图标
         }),
         
         // 微软服务 - 为微软相关服务优化的路由
         createProxyGroup(MICROSOFT_SERVICE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.MICROSOFT                   // 使用图标库中的Microsoft图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.MICROSOFT                   // 微软服务图标
         }),
         
         // 虚幻引擎 - 为虚幻引擎相关服务优化的路由
         createProxyGroup(UNREAL_ENGINE, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.UNREAL                      // 使用图标库中的虚幻引擎图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: serviceOptions,                // 完整选项
+            icon: ICONS.UNREAL                      // 虚幻引擎图标
         }),
         
-        // 广告拦截 - 广告和跟踪内容的拦截策略（包含跟踪器和程序化广告）
+        // 广告拦截 - 广告和跟踪内容的拦截策略
         createProxyGroup(AD_BLOCKING, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: ["REJECT", "DIRECT"],          // 优先拒绝，备选直连
-            icon: ICONS.AD_BLOCK                    // 使用图标库中的广告拦截图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: ["REJECT", "DIRECT"],          // 固定为拒绝和直连
+            icon: ICONS.AD_BLOCK                    // 广告拦截图标
         }),
         
         // 拦截跟踪 - 专门用于拦截用户跟踪器
         createProxyGroup(TRACKING_BLOCKING, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: ["REJECT", "DIRECT"],          // 优先拒绝，备选直连
-            icon: ICONS.TRACKING                    // 使用图标库中的跟踪器图标
-        }),
-        
-        // 程序化广告 - 专门用于拦截程序化广告
-        createProxyGroup(PROGRAMMATIC_ADS, "select", {
-            category: GROUP_CATEGORY.SERVICE,
-            proxies: ["REJECT", "DIRECT"],          // 优先拒绝，备选直连
-            icon: ICONS.PROGRAMMATIC_ADS            // 使用图标库中的程序化广告图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
+            proxies: ["REJECT", "DIRECT"],          // 固定为拒绝和直连
+            icon: ICONS.TRACKING                    // 拦截跟踪图标
         })
     ];
+}
 
-    // ===== 流量管理策略组 =====
-    // 流量管理相关的策略组
-    const trafficGroups = [
+/**
+ * 创建流量管理策略组（完整版）
+ * 说明：创建流量管理相关的策略组，包含完整选项
+ * 修改建议：
+ * - proxies: 可调整流量策略的优先级顺序
+ * - icon: 可更换图标文件
+ */
+function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
+    // 创建流量管理用的完整选项
+    const trafficOptions = [
+        "DIRECT",                                   // 直连优先
+        GLOBAL_ROUTING,                             // 代理模式
+        "延迟优选",                                   // 延迟优选
+        "故障转移",                                   // 故障转移
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
+        ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
+        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
+        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        "REJECT"                                    // 拒绝连接
+    ];
+    
+    return [
         // 大流量通道 - 专门为大流量传输优化的通道
         createProxyGroup(HIGH_TRAFFIC_CHANNEL, "select", {
-            category: GROUP_CATEGORY.TRAFFIC,       // 流量管理分类
-            proxies: ["DIRECT", ...baseOptions, MANUAL_REGION_SELECT],  // 直连优先
-            icon: ICONS.DOWNLOAD                    // 使用图标库中的下载图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.TRAFFIC,       // 流量管理分类
+            proxies: trafficOptions,                // 完整选项
+            icon: ICONS.DOWNLOAD                    // 大流量通道图标
         })
     ];
+}
 
-    // ===== 自定义规则策略组 =====
-    // 用户自定义规则的策略组
-    const customRuleGroups = [
+/**
+ * 创建自定义规则策略组（完整版）
+ * 说明：创建用户自定义规则的策略组，包含完整选项
+ * 修改建议：
+ * - proxies: 可调整自定义规则的优先级顺序
+ * - icon: 可更换图标文件
+ */
+function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
+    // 创建自定义规则用的完整选项
+    const customOptions = [
+        GLOBAL_ROUTING,                             // 代理模式优先
+        "延迟优选",                                   // 延迟优选
+        "故障转移",                                   // 故障转移
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
+        ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
+        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
+        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        "DIRECT",                                   // 直连
+        "REJECT"                                    // 拒绝连接
+    ];
+    
+    return [
         // 自定义代理规则 - 用户自定义需要代理的规则
         createProxyGroup(CUSTOM_PROXY_RULE, "select", {
-            category: GROUP_CATEGORY.CUSTOM,        // 自定义规则分类
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.CUSTOM_PROXY                // 使用图标库中的自定义代理图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CUSTOM,        // 自定义规则分类
+            proxies: customOptions,                 // 完整选项
+            icon: ICONS.CUSTOM_PROXY                // 自定义代理规则图标
         }),
         
         // 自定义直连规则 - 用户自定义需要直连的规则
         createProxyGroup(CUSTOM_DIRECT_RULE, "select", {
-            category: GROUP_CATEGORY.CUSTOM,
-            proxies: ["DIRECT", ...baseOptions, MANUAL_REGION_SELECT],  // 直连优先
-            icon: ICONS.CUSTOM_DIRECT               // 使用图标库中的自定义直连图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CUSTOM,        // 自定义规则分类
+            proxies: ["DIRECT", ...customOptions],  // 完整选项，直连优先
+            icon: ICONS.CUSTOM_DIRECT               // 自定义直连规则图标
         })
     ];
+}
 
-    // ===== 默认路由策略组 =====
-    // 最终默认路由策略组
-    const defaultRouteGroups = [
+/**
+ * 创建默认路由策略组（完整版）
+ * 说明：创建最终默认路由策略组，包含完整选项
+ * 修改建议：
+ * - proxies: 可调整默认路由的优先级顺序
+ * - icon: 可更换图标文件
+ */
+function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
+    // 创建默认路由用的完整选项
+    const defaultOptions = [
+        "DIRECT",                                   // 直连优先
+        "REJECT",                                   // 拒绝连接
+        GLOBAL_ROUTING,                             // 代理模式
+        "延迟优选",                                   // 延迟优选
+        "故障转移",                                   // 故障转移
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
+        ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
+        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
+        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
+    ];
+    
+    return [
         // 国内流量 - 国内网络流量的默认路由
         createProxyGroup(DOMESTIC_TRAFFIC, "select", {
-            category: GROUP_CATEGORY.DEFAULT_ROUTE, // 默认路由分类
-            proxies: ["DIRECT", "REJECT", MANUAL_REGION_SELECT],  // 直连优先，避免循环嵌套
-            icon: ICONS.DOMESTIC                    // 使用图标库中的中国图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.DEFAULT_ROUTE, // 默认路由分类
+            proxies: defaultOptions,                // 完整选项
+            icon: ICONS.DOMESTIC                    // 国内流量图标
         }),
         
         // 国际流量 - 国际网络流量的默认路由
         createProxyGroup(GLOBAL_TRAFFIC, "select", {
-            category: GROUP_CATEGORY.DEFAULT_ROUTE,
-            proxies: [GLOBAL_ROUTING, ...baseOptions, MANUAL_REGION_SELECT],  // 代理模式优先
-            icon: ICONS.INTERNATIONAL               // 使用图标库中的全球图标
+            category: CONFIG_MANAGER.GROUP_CATEGORY.DEFAULT_ROUTE, // 默认路由分类
+            proxies: defaultOptions,                // 完整选项
+            icon: ICONS.INTERNATIONAL               // 国际流量图标
         })
     ];
-
-    // ===== 合并所有代理组 =====
-    // 将所有策略组合并到配置中
-    params["proxy-groups"] = [
-        ...coreGroups,              // 核心路由组
-        ...regionEntryGroups,       // 地区选择入口组
-        ...manualSelectGroups,      // 地区手动选择组
-        ...autoSelectGroups,        // 地区自动选择组
-        ...(otherManualGroup ? [otherManualGroup] : []),  // 其他地区手动选择组
-        ...(otherAutoGroup ? [otherAutoGroup] : []),      // 其他地区自动选择组
-        ...lineTypeGroups,          // 线路特性组
-        ...serviceGroups,           // 服务专用组
-        ...trafficGroups,           // 流量管理组
-        ...customRuleGroups,        // 自定义规则组
-        ...defaultRouteGroups       // 默认路由组
-    ];
-    
-    // 按分类排序，确保策略组按逻辑顺序排列
-    params["proxy-groups"].sort((a, b) => {
-        const order = Object.values(GROUP_CATEGORY);  // 获取分类顺序
-        return order.indexOf(a.category) - order.indexOf(b.category);  // 按分类排序
-    });
-    
-    // 存储策略组状态，供后续规则使用
-    params.__hasResidential = hasResidential;
-    params.__hasLowRate = hasLowRate;
 }
 
 // ===================== 规则配置模块 =====================
 /**
  * 覆盖规则配置
+ * 说明：配置规则匹配顺序和对应策略组
+ * 修改建议：
+ * - 可在customRules区域添加自定义规则
+ * - 规则顺序很重要，靠前的规则优先匹配
  * @param {Object} params - 配置参数对象
  */
 function overwriteRules(params) {
-    // $$$$ 自定义规则添加区域 $$$$
+    // 自定义规则添加区域
     // 格式: "规则类型,规则值,策略组"
     // 示例: 
     //   "DOMAIN-SUFFIX,example.com,平台服务"
@@ -635,7 +890,7 @@ function overwriteRules(params) {
         // 跟踪器无IP拦截规则
         `RULE-SET,Tracking_no_ip,${TRACKING_BLOCKING}`,
         
-        // === 程序化广告拦截规则 ===
+        // === 程序化广告拦截规则（已并入广告拦截）===
         // 程序化广告IP拦截规则（并入广告拦截策略组）
         `RULE-SET,ProgrammaticAds_ip,${AD_BLOCKING}`,
         // 程序化广告域名拦截规则（并入广告拦截策略组）
@@ -708,490 +963,353 @@ function overwriteRules(params) {
 // ===================== 规则提供器配置 =====================
 /**
  * 创建规则提供器配置
+ * 说明：配置所有规则集的来源和更新设置
+ * 修改建议：
+ * - url: 可修改为其他规则源URL
+ * - path: 可修改为本地存储路径
+ * - interval: 可修改更新间隔（秒）
  * @return {Object} 规则提供器配置对象
  */
 function createRuleProviders() {
-    // 返回规则提供器配置对象
-    return {
-        // === 广告拦截规则集 ===
-        // 基于IP的广告拦截规则
-        Reject_ip: {
+    // 检查缓存
+    if (CACHE.ruleProviders) {
+        return CACHE.ruleProviders;
+    }
+    
+    /**
+     * 创建规则提供器配置的辅助函数
+     * @param {string} url - 规则集URL
+     * @param {string} path - 本地存储路径
+     * @param {number} interval - 更新间隔（秒）
+     * @return {Object} 规则提供器配置
+     */
+    function createRuleProviderConfig(url, path, interval = CONFIG_MANAGER.UPDATE_INTERVALS.DEFAULT) {
+        return {
             type: "http",                           // HTTP类型规则集
             behavior: "classical",                  // 经典规则行为
             format: "yaml",                         // YAML格式
-            interval: 1800,                         // 30分钟更新间隔
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/Reject_ip.yaml",  // 规则URL
-            path: "./ruleset/toookamak/Reject_ip.yaml"  // 本地存储路径
-        },
+            interval: interval,                     // 更新间隔
+            url: url,                               // 规则URL
+            path: path                              // 本地存储路径
+        };
+    }
+    
+    const providers = {
+        // === 广告拦截规则集 ===
+        // 基于IP的广告拦截规则
+        Reject_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/Reject_ip.yaml",
+            "./ruleset/toookamak/Reject_ip.yaml"
+        ),
         // 无IP的广告拦截规则
-        Reject_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip.yaml",
-            path: "./ruleset/toookamak/Reject_no_ip.yaml"
-        },
+        Reject_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip.yaml", 
+            "./ruleset/toookamak/Reject_no_ip.yaml"
+        ),
         // 域名集广告拦截规则
-        Reject_domainset: {
-            type: "http",
-            behavior: "domain",                     // 域名规则行为
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_domainset.yaml",
-            path: "./ruleset/toookamak/Reject_domainset.yaml"
-        },
+        Reject_domainset: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_domainset.yaml",
+            "./ruleset/toookamak/Reject_domainset.yaml"
+        ),
         // 需要丢弃的无IP广告拦截规则
-        Reject_no_ip_drop: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_drop.yaml",
-            path: "./ruleset/toookamak/Reject_no_ip_drop.yaml"
-        },
+        Reject_no_ip_drop: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_drop.yaml",
+            "./ruleset/toookamak/Reject_no_ip_drop.yaml"
+        ),
         // 不需要丢弃的无IP广告拦截规则
-        Reject_no_ip_no_drop: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_no_drop.yaml",
-            path: "./ruleset/toookamak/Reject_no_ip_no_drop.yaml"
-        },
+        Reject_no_ip_no_drop: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_no_drop.yaml",
+            "./ruleset/toookamak/Reject_no_ip_no_drop.yaml"
+        ),
         
         // === 跟踪器拦截规则集 ===
         // 跟踪器IP拦截规则
-        Tracking_ip: {
-            type: "http",
-            behavior: "ipcidr",                     // IP CIDR规则行为
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/Tracking_ip.yaml",
-            path: "./ruleset/toookamak/Tracking_ip.yaml"
-        },
+        Tracking_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/Tracking_ip.yaml",
+            "./ruleset/toookamak/Tracking_ip.yaml"
+        ),
         // 跟踪器域名集拦截规则
-        Tracking_domainset: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Tracking_domainset.yaml",
-            path: "./ruleset/toookamak/Tracking_domainset.yaml"
-        },
+        Tracking_domainset: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Tracking_domainset.yaml",
+            "./ruleset/toookamak/Tracking_domainset.yaml"
+        ),
         // 跟踪器无IP拦截规则
-        Tracking_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Tracking_no_ip.yaml",
-            path: "./ruleset/toookamak/Tracking_no_ip.yaml"
-        },
+        Tracking_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Tracking_no_ip.yaml",
+            "./ruleset/toookamak/Tracking_no_ip.yaml"
+        ),
         
-        // === 程序化广告拦截规则集 ===
+        // === 程序化广告拦截规则集（已并入广告拦截）===
         // 程序化广告IP拦截规则
-        ProgrammaticAds_ip: {
-            type: "http",
-            behavior: "ipcidr",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/ProgrammaticAds_ip.yaml",
-            path: "./ruleset/toookamak/ProgrammaticAds_ip.yaml"
-        },
+        ProgrammaticAds_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/ProgrammaticAds_ip.yaml",
+            "./ruleset/toookamak/ProgrammaticAds_ip.yaml"
+        ),
         // 程序化广告域名集拦截规则
-        ProgrammaticAds_domainset: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/ProgrammaticAds_domainset.yaml",
-            path: "./ruleset/toookamak/ProgrammaticAds_domainset.yaml"
-        },
+        ProgrammaticAds_domainset: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/ProgrammaticAds_domainset.yaml",
+            "./ruleset/toookamak/ProgrammaticAds_domainset.yaml"
+        ),
         // 程序化广告无IP拦截规则
-        ProgrammaticAds_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/ProgrammaticAds_no_ip.yaml",
-            path: "./ruleset/toookamak/ProgrammaticAds_no_ip.yaml"
-        },
+        ProgrammaticAds_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/ProgrammaticAds_no_ip.yaml",
+            "./ruleset/toookamak/ProgrammaticAds_no_ip.yaml"
+        ),
         
         // === 直连规则集 ===
         // 中国IP直连规则
-        China_ip: {
-            type: "http",
-            behavior: "ipcidr",                     // IP CIDR规则行为
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/China_ip.yaml",
-            path: "./ruleset/toookamak/China_ip.yaml"
-        },
+        China_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/China_ip.yaml",
+            "./ruleset/toookamak/China_ip.yaml"
+        ),
         // 国内IP直连规则
-        Domestic_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Domestic_ip.yaml",
-            path: "./ruleset/toookamak/Domestic_ip.yaml"
-        },
+        Domestic_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Domestic_ip.yaml",
+            "./ruleset/toookamak/Domestic_ip.yaml"
+        ),
         // Google FCM IP直连规则
-        GoogleFCM_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/GoogleFCM_ip.yaml",
-            path: "./ruleset/toookamak/GoogleFCM_ip.yaml"
-        },
+        GoogleFCM_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/GoogleFCM_ip.yaml",
+            "./ruleset/toookamak/GoogleFCM_ip.yaml"
+        ),
         // 局域网IP直连规则
-        Lan_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Lan_ip.yaml",
-            path: "./ruleset/toookamak/Lan_ip.yaml"
-        },
+        Lan_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Lan_ip.yaml",
+            "./ruleset/toookamak/Lan_ip.yaml"
+        ),
         // 网易音乐IP直连规则
-        NetEaseMusic_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/NetEaseMusic_ip.yaml",
-            path: "./ruleset/toookamak/NetEaseMusic_ip.yaml"
-        },
+        NetEaseMusic_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/NetEaseMusic_ip.yaml",
+            "./ruleset/toookamak/NetEaseMusic_ip.yaml"
+        ),
         // 国内Steam IP直连规则
-        SteamCN_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/SteamCN_ip.yaml",
-            path: "./ruleset/toookamak/SteamCN_ip.yaml"
-        },
+        SteamCN_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/SteamCN_ip.yaml",
+            "./ruleset/toookamak/SteamCN_ip.yaml"
+        ),
         // Apple CDN无IP直连规则
-        AppleCDN_no_ip: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCDN_no_ip.yaml",
-            path: "./ruleset/toookamak/AppleCDN_no_ip.yaml"
-        },
+        AppleCDN_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCDN_no_ip.yaml",
+            "./ruleset/toookamak/AppleCDN_no_ip.yaml"
+        ),
         // 国内Apple无IP直连规则
-        AppleCN_no_ip: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCN_no_ip.yaml",
-            path: "./ruleset/toookamak/AppleCN_no_ip.yaml"
-        },
+        AppleCN_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCN_no_ip.yaml",
+            "./ruleset/toookamak/AppleCN_no_ip.yaml"
+        ),
         // 通用直连无IP规则
-        Direct_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Direct_no_ip.yaml",
-            path: "./ruleset/toookamak/Direct_no_ip.yaml"
-        },
+        Direct_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Direct_no_ip.yaml",
+            "./ruleset/toookamak/Direct_no_ip.yaml"
+        ),
         // 国内无IP直连规则
-        Domestic_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Domestic_no_ip.yaml",
-            path: "./ruleset/toookamak/Domestic_no_ip.yaml"
-        },
+        Domestic_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Domestic_no_ip.yaml",
+            "./ruleset/toookamak/Domestic_no_ip.yaml"
+        ),
         // Google FCM无IP直连规则
-        GoogleFCM_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/GoogleFCM_no_ip.yaml",
-            path: "./ruleset/toookamak/GoogleFCM_no_ip.yaml"
-        },
+        GoogleFCM_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/GoogleFCM_no_ip.yaml",
+            "./ruleset/toookamak/GoogleFCM_no_ip.yaml"
+        ),
         // 局域网无IP直连规则
-        Lan_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Lan_no_ip.yaml",
-            path: "./ruleset/toookamak/Lan_no_ip.yaml"
-        },
+        Lan_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Lan_no_ip.yaml",
+            "./ruleset/toookamak/Lan_no_ip.yaml"
+        ),
         // 微软CDN无IP直连规则
-        MicrosoftCDN_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/MicrosoftCDN_no_ip.yaml",
-            path: "./ruleset/toookamak/MicrosoftCDN_no_ip.yaml"
-        },
+        MicrosoftCDN_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/MicrosoftCDN_no_ip.yaml",
+            "./ruleset/toookamak/MicrosoftCDN_no_ip.yaml"
+        ),
         // 网易音乐无IP直连规则
-        NetEaseMusic_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/NetEaseMusic_no_ip.yaml",
-            path: "./ruleset/toookamak/NetEaseMusic_no_ip.yaml"
-        },
+        NetEaseMusic_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/NetEaseMusic_no_ip.yaml",
+            "./ruleset/toookamak/NetEaseMusic_no_ip.yaml"
+        ),
         // 国内Steam无IP直连规则
-        SteamCN_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamCN_no_ip.yaml",
-            path: "./ruleset/toookamak/SteamCN_no_ip.yaml"
-        },
+        SteamCN_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamCN_no_ip.yaml",
+            "./ruleset/toookamak/SteamCN_no_ip.yaml"
+        ),
         // Steam地区无IP直连规则
-        SteamRegion_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamRegion_no_ip.yaml",
-            path: "./ruleset/toookamak/SteamRegion_no_ip.yaml"
-        },
+        SteamRegion_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamRegion_no_ip.yaml",
+            "./ruleset/toookamak/SteamRegion_no_ip.yaml"
+        ),
         
         // === 代理规则集 ===
         // 流媒体IP代理规则
-        Stream_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Stream_ip.yaml",
-            path: "./ruleset/toookamak/Stream_ip.yaml"
-        },
+        Stream_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Stream_ip.yaml",
+            "./ruleset/toookamak/Stream_ip.yaml"
+        ),
         // Telegram IP代理规则
-        Telegram_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Telegram_ip.yaml",
-            path: "./ruleset/toookamak/Telegram_ip.yaml"
-        },
+        Telegram_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Telegram_ip.yaml",
+            "./ruleset/toookamak/Telegram_ip.yaml"
+        ),
         // AI无IP代理规则
-        AI_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/AI_no_ip.yaml",
-            path: "./ruleset/toookamak/AI_no_ip.yaml"
-        },
+        AI_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/AI_no_ip.yaml",
+            "./ruleset/toookamak/AI_no_ip.yaml"
+        ),
         // Apple无IP代理规则
-        Apple_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Apple_no_ip.yaml",
-            path: "./ruleset/toookamak/Apple_no_ip.yaml"
-        },
+        Apple_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Apple_no_ip.yaml",
+            "./ruleset/toookamak/Apple_no_ip.yaml"
+        ),
         // CDN域名集代理规则
-        CDN_domainset: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_domainset.yaml",
-            path: "./ruleset/toookamak/CDN_domainset.yaml"
-        },
+        CDN_domainset: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_domainset.yaml",
+            "./ruleset/toookamak/CDN_domainset.yaml"
+        ),
         // CDN无IP代理规则
-        CDN_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_no_ip.yaml",
-            path: "./ruleset/toookamak/CDN_no_ip.yaml"
-        },
+        CDN_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_no_ip.yaml",
+            "./ruleset/toookamak/CDN_no_ip.yaml"
+        ),
         // 自定义代理无IP规则
-        CustomProxy_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CustomProxy_no_ip.yaml",
-            path: "./ruleset/toookamak/CustomProxy_no_ip.yaml"
-        },
+        CustomProxy_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CustomProxy_no_ip.yaml",
+            "./ruleset/toookamak/CustomProxy_no_ip.yaml"
+        ),
         // 下载域名集代理规则
-        Download_domainset: {
-            type: "http",
-            behavior: "domain",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_domainset.yaml",
-            path: "./ruleset/toookamak/Download_domainset.yaml"
-        },
+        Download_domainset: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_domainset.yaml",
+            "./ruleset/toookamak/Download_domainset.yaml"
+        ),
         // 下载无IP代理规则
-        Download_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_no_ip.yaml",
-            path: "./ruleset/toookamak/Download_no_ip.yaml"
-        },
+        Download_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_no_ip.yaml",
+            "./ruleset/toookamak/Download_no_ip.yaml"
+        ),
         // 全球无IP代理规则
-        Global_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Global_no_ip.yaml",
-            path: "./ruleset/toookamak/Global_no_ip.yaml"
-        },
+        Global_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Global_no_ip.yaml",
+            "./ruleset/toookamak/Global_no_ip.yaml"
+        ),
         // 微软无IP代理规则
-        Microsoft_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Microsoft_no_ip.yaml",
-            path: "./ruleset/toookamak/Microsoft_no_ip.yaml"
-        },
+        Microsoft_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Microsoft_no_ip.yaml",
+            "./ruleset/toookamak/Microsoft_no_ip.yaml"
+        ),
         // Steam无IP代理规则
-        Steam_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Steam_no_ip.yaml",
-            path: "./ruleset/toookamak/Steam_no_ip.yaml"
-        },
+        Steam_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Steam_no_ip.yaml",
+            "./ruleset/toookamak/Steam_no_ip.yaml"
+        ),
         // Telegram无IP代理规则
-        Telegram_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Telegram_no_ip.yaml",
-            path: "./ruleset/toookamak/Telegram_no_ip.yaml"
-        },
+        Telegram_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Telegram_no_ip.yaml",
+            "./ruleset/toookamak/Telegram_no_ip.yaml"
+        ),
         // 更新无IP代理规则
-        Update_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Update_no_ip.yaml",
-            path: "./ruleset/toookamak/Update_no_ip.yaml"
-        },
+        Update_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Update_no_ip.yaml",
+            "./ruleset/toookamak/Update_no_ip.yaml"
+        ),
         // Steam地区IP代理规则
-        SteamRegion_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/SteamRegion_ip.yaml",
-            path: "./ruleset/toookamak/SteamRegion_ip.yaml"
-        },
+        SteamRegion_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/SteamRegion_ip.yaml",
+            "./ruleset/toookamak/SteamRegion_ip.yaml"
+        ),
         
         // === 新增规则集 ===
         // Office无IP代理规则
-        Office_no_ip: {
-            type: "http",
-            behavior: "classical",
-            format: "yaml",
-            interval: 1800,
-            url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Office_no_ip.yaml",
-            path: "./ruleset/toookamak/Office_no_ip.yaml"
-        },
+        Office_no_ip: createRuleProviderConfig(
+            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Office_no_ip.yaml",
+            "./ruleset/toookamak/Office_no_ip.yaml"
+        ),
         
         // === 新增 Figma 规则集 ===
         // Figma IP代理规则
         Figma_ip: {
-            type: "http",
-            behavior: "ipcidr",
-            format: "text",
-            interval: 86400,  // 24小时更新间隔
+            type: "http",                           // HTTP类型规则集
+            behavior: "ipcidr",                     // IP CIDR规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/privateip.txt",  // Figma规则URL
-            path: "./ruleset/toookamak/Figma_ip.list"
+            path: "./ruleset/toookamak/Figma_ip.list"  // 本地存储路径
         },
         
         // === 自定义规则集 ===
         // 用户自定义代理规则
         CustomProxyRules: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
-            url: CUSTOM_PROXY_RULES_URL,  // 自定义代理规则URL
-            path: "./ruleset/toookamak/OwnPROXYRules.yaml"
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
+            url: CONFIG_MANAGER.CUSTOM_RULES.PROXY_URL,  // 自定义代理规则URL
+            path: "./ruleset/toookamak/OwnPROXYRules.yaml"  // 本地存储路径
         },
         // 用户自定义直连规则
         CustomDirectRules: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
-            url: CUSTOM_DIRECT_RULES_URL,  // 自定义直连规则URL
-            path: "./ruleset/toookamak/OwnDIRECTRules.yaml"
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
+            url: CONFIG_MANAGER.CUSTOM_RULES.DIRECT_URL,  // 自定义直连规则URL
+            path: "./ruleset/toookamak/OwnDIRECTRules.yaml"  // 本地存储路径
         },
         
         // === 应用规则集 ===
         // 应用程序规则集
         applications: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt",  // 应用规则URL
-            path: "./ruleset/toookamak/applications.yaml"
+            path: "./ruleset/toookamak/applications.yaml"  // 本地存储路径
         },
         
         // === Epic下载规则集 ===
         // Epic游戏下载规则集
         epicDownload: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/epic.txt",  // Epic下载规则URL
-            path: "./ruleset/toookamak/epicDownload.yaml"
+            path: "./ruleset/toookamak/epicDownload.yaml"  // 本地存储路径
         },
         
         // === 虚幻引擎规则集 ===
         // 虚幻引擎规则集
         UnrealRules: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/unreal.txt",  // 虚幻引擎规则URL
-            path: "./ruleset/toookamak/UnrealRules.yaml"
+            path: "./ruleset/toookamak/UnrealRules.yaml"  // 本地存储路径
         },
         
         // === AI规则集 ===
         // AI服务规则集
         ai: {
-            type: "http",
-            behavior: "classical",
-            format: "text",
-            interval: 86400,
+            type: "http",                           // HTTP类型规则集
+            behavior: "classical",                  // 经典规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/ai.txt",  // AI规则URL
-            path: "./ruleset/toookamak/ai.yaml"
+            path: "./ruleset/toookamak/ai.yaml"     // 本地存储路径
         }
     };
+    
+    // 存储到缓存
+    CACHE.ruleProviders = providers;
+    return providers;
 }
 
 // ===================== 辅助函数 =====================
 /**
  * 创建代理组
+ * 说明：策略组工厂方法，统一创建策略组
+ * 修改建议：
+ * - 一般不需要修改此函数
+ * - 如需添加特殊参数，可以在此函数中扩展
  * @param {string} name - 策略组名称
  * @param {string} type - 策略组类型
  * @param {Object} options - 策略组选项
@@ -1203,8 +1321,8 @@ function createProxyGroup(name, type, options = {}) {
         name,                                       // 策略组名称
         type,                                       // 策略组类型
         category: options.category || "未分类",      // 策略组分类
-        url: type !== "select" ? TEST_URL : undefined,  // 测试URL（非选择类型）
-        interval: type !== "select" ? 300 : undefined   // 测试间隔（非选择类型）
+        url: type !== "select" ? CONFIG_MANAGER.TEST_URL : undefined,  // 测试URL（非选择类型）
+        interval: type !== "select" ? 600 : undefined   // 测试间隔（非选择类型，优化为600秒省电）
     };
     
     // 针对负载均衡类型做特殊处理
@@ -1221,27 +1339,11 @@ function createProxyGroup(name, type, options = {}) {
 }
 
 /**
- * 创建自定义策略组
- * @param {string} name - 策略组名称
- * @param {string} icon - 策略组图标URL
- * @param {Array} proxies - 代理节点数组
- * @param {string} category - 策略组分类
- * @return {Object} 策略组对象
- */
-function createCustomGroup(name, icon, proxies, category) {
-    // 返回自定义策略组对象
-    return {
-        name,                                       // 策略组名称
-        type: "select",                             // 策略组类型为选择类型
-        category: category || "未分类",              // 策略组分类
-        icon: icon,                                 // 策略组图标
-        proxies: [...proxies],                      // 代理节点数组
-        hidden: false                               // 不隐藏该策略组
-    };
-}
-
-/**
  * 根据正则表达式获取代理节点
+ * 说明：根据正则表达式筛选匹配的代理节点
+ * 修改建议：
+ * - regex: 可修改正则表达式以适配不同的节点命名规则
+ * - fallback: 可修改备选节点数组
  * @param {Object} params - 配置参数对象
  * @param {RegExp} regex - 匹配正则表达式
  * @param {Array} fallback - 备选节点数组
@@ -1259,6 +1361,10 @@ function getProxiesByRegex(params, regex, fallback = ["DIRECT"]) {
 // ===================== DNS配置模块 =====================
 /**
  * 覆盖DNS配置
+ * 说明：配置DNS解析相关参数
+ * 修改建议：
+ * - nameserver: 可修改为其他DNS服务器
+ * - fake-ip-filter: 可添加需要跳过fake-ip的域名
  * @param {Object} params - 配置参数对象
  */
 function overwriteDns(params) {
@@ -1300,6 +1406,11 @@ function overwriteDns(params) {
 // ===================== TUN配置模块 =====================
 /**
  * 覆盖TUN配置
+ * 说明：配置TUN隧道相关参数
+ * 修改建议：
+ * - enable: 设为false可禁用TUN功能
+ * - stack: 可修改为其他协议栈（如gvisor）
+ * - mtu: 可调整最大传输单元大小
  * @param {Object} params - 配置参数对象
  */
 function overwriteTunnel(params) {
