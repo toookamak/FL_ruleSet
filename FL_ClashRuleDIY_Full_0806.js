@@ -925,7 +925,7 @@ function overwriteRules(params) {
         // YouTube视频服务规则
         `GEOSITE,youtube,${VIDEO_SERVICE}`,
         // Telegram即时通讯IP规则
-        `GEOIP,telegram,${INSTANT_MESSAGING}`,
+        `RULE-SET,Telegram_ip,${INSTANT_MESSAGING}`,
         // 谷歌服务规则
         `GEOSITE,google,${GOOGLE_SERVICE}`,
         // 国内微软服务规则
@@ -939,9 +939,9 @@ function overwriteRules(params) {
         
         // === 基础路由规则 ===
         // 私有网络直连规则
-        "GEOSITE,private,DIRECT",
+        //"RULE-SET,private,DIRECT",
         // 私有IP直连规则（不解析）
-        "GEOIP,private,DIRECT,no-resolve",
+        //"GEOIP,private,DIRECT,no-resolve",
         // 国内域名直连规则
         "GEOSITE,cn,DIRECT",
         // 国内IP直连规则（不解析）
