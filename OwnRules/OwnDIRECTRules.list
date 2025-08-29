@@ -1,5 +1,12 @@
 # 自定义直连规则
 
 
+#DOMAIN，完全匹配域名，例如 DOMAIN,google.com 匹配 google.com，但不匹配 www.google.com
+#DOMAIN-SUFFIX，匹配域名后缀，例如 DOMAIN-SUFFIX,google.com 匹配 google.com 和 www.google.com
+#DOMAIN-KEYWORD，关键词匹配域名，例如 DOMAIN-KEYWORD,google 匹配 google.com 和 google.jp
+#DOMAIN-WILDCARD，使用通配符匹配域名，支持 * 和 ?，例如 DOMAIN-WILDCARD,*.google.com 匹配 www.google.com 和 mail.google.com。其中 * 匹配任意数量的字符，? 匹配一个字符。
+
+
+
 DOMAIN-SUFFIX,linux.do
 DOMAIN-SUFFIX,download1.akamaized.net
