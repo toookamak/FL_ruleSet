@@ -1216,12 +1216,7 @@ function createRuleProviders() {
         ),
         
         // === 新增规则集 ===
-        // Office无IP代理规则
-        Office_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Office_no_ip.yaml",
-            "./ruleset/toookamak/Office_no_ip.yaml"
-        ),
-        
+
         // === 新增 Figma 规则集 ===
         // Figma IP代理规则
         Figma_ip: {
@@ -1229,8 +1224,17 @@ function createRuleProviders() {
             behavior: "ipcidr",                     // IP CIDR规则行为
             format: "text",                         // 文本格式
             interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
-            url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/privateip.txt",  // Figma规则URL
+            url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Loon/Figma/Figma.list",  // Figma规则URL
             path: "./ruleset/toookamak/Figma_ip.list"  // 本地存储路径
+        },
+                // Notion IP代理规则
+        Notion_ip: {
+            type: "http",                           // HTTP类型规则集
+            behavior: "ipcidr",                     // IP CIDR规则行为
+            format: "text",                         // 文本格式
+            interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
+            url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Notion/Notion.list",  // notion规则URL
+            path: "./ruleset/toookamak/notion_ip.list"  // 本地存储路径
         },
         
         // === 自定义规则集 ===
@@ -1266,7 +1270,7 @@ function createRuleProviders() {
         
         // === Epic下载规则集 ===
         // Epic游戏下载规则集
-        epicDownload: {
+  /*       epicDownload: {
             type: "http",                           // HTTP类型规则集
             behavior: "classical",                  // 经典规则行为
             format: "text",                         // 文本格式
@@ -1274,7 +1278,7 @@ function createRuleProviders() {
             url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/epic.txt",  // Epic下载规则URL
             path: "./ruleset/toookamak/epicDownload.yaml"  // 本地存储路径
         },
-        
+         */
         // === 虚幻引擎规则集 ===
         // 虚幻引擎规则集
         UnrealRules: {
@@ -1282,7 +1286,7 @@ function createRuleProviders() {
             behavior: "classical",                  // 经典规则行为
             format: "text",                         // 文本格式
             interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
-            url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/unreal.txt",  // 虚幻引擎规则URL
+            url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Epic/Epic.list",  // 虚幻引擎规则URL
             path: "./ruleset/toookamak/UnrealRules.yaml"  // 本地存储路径
         },
         
@@ -1293,7 +1297,7 @@ function createRuleProviders() {
             behavior: "classical",                  // 经典规则行为
             format: "text",                         // 文本格式
             interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,  // 24小时更新间隔
-            url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/ai.txt",  // AI规则URL
+            url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.list",  // AI规则URL
             path: "./ruleset/toookamak/ai.yaml"     // 本地存储路径
         }
     };
