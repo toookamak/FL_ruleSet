@@ -70,7 +70,7 @@ const CONFIG_MANAGER = {
  * - 可以根据个人喜好修改策略组中文名称
  * - 不建议修改英文常量名，会影响代码逻辑
  */
-const GLOBAL_ROUTING = "代理模式";                    // 核心代理模式入口
+const GLOBAL_ROUTING = "🧭 代理模式";                    // 核心代理模式入口
 const ALL_NODES_GROUP = "🌍 全部节点";                // 显示所有节点线路
 const RESIDENTIAL_LINE = "🏠 家宽/原生线路";             // 家宽/原生IP线路
 const LOW_RATE_NODE = "💰 低倍率节点";                  // 低倍率优惠节点
@@ -426,6 +426,7 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 显示所有节点线路        
+        "🌐 其他地区",
         "⚡ 延迟优选",                                   // 延迟优选策略组
         "🚧 故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
@@ -438,7 +439,7 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
     
     // 如果有其他地区节点，添加其他地区手动选择
     if (hasOtherProxies) {
-        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 3 + 3, 0, "🌐 其他地区 · 手动选择");
+        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 3 + 3, 0, "🌐 其他地区");
     }
     
     return baseOptions;
@@ -578,7 +579,7 @@ function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
     ) : null;
     
     const otherManualGroup = hasOtherProxies ? createProxyGroup(
-        "🌐 其他地区 · 手动选择",                       // 手动选择其他地区节点
+        "🌐 其他地区",                       // 手动选择其他地区节点
         "select", 
         {
             category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,
@@ -643,7 +644,7 @@ function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -734,7 +735,7 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
         "REJECT"                                    // 拒绝连接
     ];
     
@@ -767,7 +768,7 @@ function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidentia
         ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -810,7 +811,7 @@ function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResident
         ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区"] : [])  // 添加其他地区手动选择
     ];
     
     return [
