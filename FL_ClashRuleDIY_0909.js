@@ -3,7 +3,7 @@
 // 优化：直接使用完整规则URL，便于维护
 // 特点：所有规则集使用完整URL，图标使用完整URL
 // 版本：v8.1.1
-// 最后更新：2025-11-24  |  增加emoji优化辨识度
+// 最后更新：2025-11-24  |  修复不显示手动地区的bug
 // ===================== 待       办 =====================
 //
 // 1.优化了规则集顺序，补充精简规则集
@@ -308,9 +308,10 @@ function overwriteProxyGroups(params) {
     // 合并所有代理组 - 按照优化后的顺序排列（服务策略组靠前，地区策略组靠后）
     const allGroups = [
         ...coreGroups,
-        ...lineTypeGroups,
+
         ...(otherManualGroup ? [otherManualGroup] : []),
         ...(otherAutoGroup ? [otherAutoGroup] : []),
+        ...lineTypeGroups,
         ...serviceGroups,           // 服务策略组靠前
         ...trafficGroups, 
         ...customRuleGroups,
@@ -425,8 +426,8 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
     const baseOptions = [
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
-        ALL_NODES_GROUP,                            // 显示所有节点线路        
         "🌐 其他地区",
+        ALL_NODES_GROUP,                            // 显示所有节点线路        
         "⚡ 延迟优选",                                   // 延迟优选策略组
         "🚧 故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
@@ -463,12 +464,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
             icon: ICONS.GLOBAL_ROUTING              // 代理模式图标
         }),
         
-        // 全部节点 - 显示所有有效节点
-        createProxyGroup(ALL_NODES_GROUP, "select", {
-            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
-            proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
-            icon: ICONS.ALL_NODES                   // 全部节点图标
-        }),
+        
         
         // 延迟优选 - 根据延迟自动选择最优节点
         createProxyGroup("⚡ 延迟优选", "url-test", {
@@ -506,7 +502,15 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
             icon: ICONS.LOAD_BALANCE,               // 负载均衡图标
             hidden: true                            // 隐藏该组
-        })
+        }),
+
+        // 全部节点 - 显示所有有效节点
+        createProxyGroup(ALL_NODES_GROUP, "select", {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
+            proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
+            icon: ICONS.ALL_NODES,                   // 全部节点图标
+            hidden: false 
+        }),
     ];
 }
 
@@ -559,7 +563,7 @@ function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
                 category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,    // 具体地区分类
                 proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
                 icon: region.icon,                  // 地区图标
-                hidden: true                       // 不隐藏该策略组
+                hidden: false                       // 不隐藏该策略组
             }
         ))
         .filter(g => g.proxies.length > 0);
@@ -641,10 +645,11 @@ function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
-        ALL_NODES_GROUP,                            // 全部节点优先
+        
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
+        ALL_NODES_GROUP,                            // 全部节点优先
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -732,10 +737,11 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
-        ALL_NODES_GROUP,                            // 全部节点
+        
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
+        ALL_NODES_GROUP,                            // 全部节点
         "REJECT"                                    // 拒绝连接
     ];
     
@@ -765,10 +771,11 @@ function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidentia
         "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
-        ALL_NODES_GROUP,                            // 全部节点优先
+        
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["🌐 其他地区"] : []), // 添加其他地区手动选择
+        ALL_NODES_GROUP,                            // 全部节点优先
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -808,10 +815,11 @@ function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResident
         "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
-        ALL_NODES_GROUP,                            // 全部节点
+        
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["🌐 其他地区"] : [])  // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区"] : []),  // 添加其他地区手动选择
+        ALL_NODES_GROUP,                            // 全部节点
     ];
     
     return [
