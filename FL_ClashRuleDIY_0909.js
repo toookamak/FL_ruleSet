@@ -2,9 +2,10 @@
 // FL_Clash_Rule_DIY.js - 策略组优化版
 // 优化：直接使用完整规则URL，便于维护
 // 特点：所有规则集使用完整URL，图标使用完整URL
-// 版本：v8.0.1
-// 最后更新：2025-09-09
+// 版本：v8.1.1
+// 最后更新：2025-11-24  |  精简了地区手动策略组
 // ===================== 待       办 =====================
+//
 // 1.优化了规则集顺序，补充精简规则集
 // 2.GEO的优化
 // 3.DNS设置的优化
@@ -70,7 +71,6 @@ const CONFIG_MANAGER = {
  * - 不建议修改英文常量名，会影响代码逻辑
  */
 const GLOBAL_ROUTING = "代理模式";                    // 核心代理模式入口
-const MANUAL_REGION_SELECT = "手动选择 (地区)";       // 手动选择地区入口
 const RESIDENTIAL_LINE = "家宽/原生线路";             // 家宽/原生IP线路
 const LOW_RATE_NODE = "低倍率节点";                  // 低倍率优惠节点
 const INSTANT_MESSAGING = "即时通讯";                // 即时通讯服务
@@ -118,7 +118,6 @@ const CACHE = {
 const ICONS = {
     // 核心路由图标
     GLOBAL_ROUTING: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Proxy.png",          // 代理模式
-    MANUAL_REGION: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Global.png",          // 手动选择
     SPEED_TEST: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Speedtest.png",          // 延迟优选
     FAILOVER: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Final.png",                // 故障转移
     LOAD_BALANCE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Balance.png",          // 负载均衡
@@ -296,7 +295,6 @@ function overwriteProxyGroups(params) {
     
     // 创建各类策略组
     const coreGroups = createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
-    const regionEntryGroups = createRegionEntryGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
     const { autoSelectGroups, manualSelectGroups, otherAutoGroup, otherManualGroup } = 
         createRegionalGroups(params, COUNTRY_REGIONS, availableRegions);
     const lineTypeGroups = createLineTypeGroups(hasResidential, residentialProxies, hasLowRate, lowRateProxies);
@@ -313,9 +311,8 @@ function overwriteProxyGroups(params) {
         ...trafficGroups, 
         ...customRuleGroups,
         ...defaultRouteGroups,
-        ...regionEntryGroups,       // 地区选择入口
-        ...manualSelectGroups,      // 地区手动选择组
         ...autoSelectGroups,        // 地区自动选择组
+        ...manualSelectGroups,      // 地区手动选择组
         ...(otherManualGroup ? [otherManualGroup] : []),
         ...(otherAutoGroup ? [otherAutoGroup] : [])
     ];
@@ -424,6 +421,7 @@ function processProxyNodes(params, COUNTRY_REGIONS) {
 function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies = false) {
     const baseOptions = [
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         "延迟优选",                                   // 延迟优选策略组
         "故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
@@ -436,7 +434,7 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
     
     // 如果有其他地区节点，添加其他地区手动选择
     if (hasOtherProxies) {
-        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length + 2, 0, "其他地区 · 手动选择");
+        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 2 + 2, 0, "其他地区 · 手动选择");
     }
     
     return baseOptions;
@@ -456,10 +454,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
         // 代理模式 - 总入口策略组
         createProxyGroup(GLOBAL_ROUTING, "select", {
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
-            proxies: [
-                ...baseOptions,                     // 基础选项
-                MANUAL_REGION_SELECT               // 手动选择地区入口
-            ],
+            proxies: baseOptions,                     // 基础选项
             icon: ICONS.GLOBAL_ROUTING              // 代理模式图标
         }),
         
@@ -499,31 +494,6 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
             icon: ICONS.LOAD_BALANCE,               // 负载均衡图标
             hidden: true                            // 隐藏该组
-        })
-    ];
-}
-
-/**
- * 创建地区入口策略组
- * 说明：创建地区选择入口策略组，提供用户选择地区的统一入口
- * 修改建议：
- * - 可调整地区入口的显示顺序
- * - 可添加更多备用选项
- */
-function createRegionEntryGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate) {
-    const baseOptions = createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate);
-    const manualGroups = COUNTRY_REGIONS
-        .filter(r => availableRegions.has(r.name))
-        .map(r => `${r.name} · 手动选择`);
-    
-    const otherProxies = [...(hasResidential ? [RESIDENTIAL_LINE] : []), ...(hasLowRate ? [LOW_RATE_NODE] : [])];
-    
-    return [
-        // 手动选择入口 - 用户手动选择具体地区的入口
-        createProxyGroup(MANUAL_REGION_SELECT, "select", {
-            category: CONFIG_MANAGER.GROUP_CATEGORY.REGION_ENTRY,  // 地区选择分类
-            proxies: [...manualGroups, ...otherProxies, "DIRECT", "REJECT"],
-            icon: ICONS.MANUAL_REGION               // 手动选择图标
         })
     ];
 }
@@ -577,7 +547,7 @@ function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
                 category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,    // 具体地区分类
                 proxies: getProxiesByRegex(params, region.regex),  // 该地区的代理节点
                 icon: region.icon,                  // 地区图标
-                hidden: false                       // 不隐藏该策略组
+                hidden: true                       // 不隐藏该策略组
             }
         ))
         .filter(g => g.proxies.length > 0);
@@ -657,9 +627,9 @@ function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
@@ -727,10 +697,7 @@ function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
             category: CONFIG_MANAGER.GROUP_CATEGORY.SERVICE,       // 服务专用分类
             proxies: ["REJECT", "DIRECT"],          // 固定为拒绝和直连
             icon: ICONS.AD_BLOCK                    // 广告拦截图标
-        }),
-        
-        // 拦截跟踪 - 专门用于拦截用户跟踪器
-
+        })
     ];
 }
 
@@ -749,9 +716,9 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "REJECT"                                    // 拒绝连接
     ];
@@ -780,9 +747,9 @@ function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidentia
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
@@ -821,9 +788,9 @@ function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResident
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
+        ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        MANUAL_REGION_SELECT,                       // 添加手动选择地区入口
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
     ];
     
@@ -890,16 +857,10 @@ function overwriteRules(params) {
 
 
 
-
-
-
-
-
         
         // === 程序化广告拦截规则（已并入广告拦截）===
-
         
-        // $$$$ 用户自定义规则区域 $$$$
+        // $$$$ 用户自定义规则区域 $$$$  
         ...customRules,  // 用户自定义规则插入点
         
         // === 应用规则集 ===
