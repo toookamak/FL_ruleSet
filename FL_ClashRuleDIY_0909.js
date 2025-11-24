@@ -3,7 +3,7 @@
 // 优化：直接使用完整规则URL，便于维护
 // 特点：所有规则集使用完整URL，图标使用完整URL
 // 版本：v8.1.1
-// 最后更新：2025-11-24  |  精简了地区手动策略组
+// 最后更新：2025-11-24  |  优化地区分组
 // ===================== 待       办 =====================
 //
 // 1.优化了规则集顺序，补充精简规则集
@@ -71,6 +71,7 @@ const CONFIG_MANAGER = {
  * - 不建议修改英文常量名，会影响代码逻辑
  */
 const GLOBAL_ROUTING = "代理模式";                    // 核心代理模式入口
+const ALL_NODES_GROUP = "🌍 全部节点";                // 显示所有节点线路
 const RESIDENTIAL_LINE = "家宽/原生线路";             // 家宽/原生IP线路
 const LOW_RATE_NODE = "低倍率节点";                  // 低倍率优惠节点
 const INSTANT_MESSAGING = "即时通讯";                // 即时通讯服务
@@ -118,6 +119,7 @@ const CACHE = {
 const ICONS = {
     // 核心路由图标
     GLOBAL_ROUTING: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Proxy.png",          // 代理模式
+    ALL_NODES: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "World_Map.png",           // 全部节点
     SPEED_TEST: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Speedtest.png",          // 延迟优选
     FAILOVER: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Final.png",                // 故障转移
     LOAD_BALANCE: CONFIG_MANAGER.CDN_SOURCES.PRIMARY + "Balance.png",          // 负载均衡
@@ -422,6 +424,7 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
     const baseOptions = [
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
+        ALL_NODES_GROUP,                            // 显示所有节点线路        
         "延迟优选",                                   // 延迟优选策略组
         "故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
@@ -434,7 +437,7 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
     
     // 如果有其他地区节点，添加其他地区手动选择
     if (hasOtherProxies) {
-        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 2 + 2, 0, "其他地区 · 手动选择");
+        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 3 + 3, 0, "其他地区 · 手动选择");
     }
     
     return baseOptions;
@@ -456,6 +459,13 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
             proxies: baseOptions,                     // 基础选项
             icon: ICONS.GLOBAL_ROUTING              // 代理模式图标
+        }),
+        
+        // 全部节点 - 显示所有有效节点
+        createProxyGroup(ALL_NODES_GROUP, "select", {
+            category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,          // 核心路由分类
+            proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
+            icon: ICONS.ALL_NODES                   // 全部节点图标
         }),
         
         // 延迟优选 - 根据延迟自动选择最优节点
@@ -623,11 +633,13 @@ function createLineTypeGroups(hasResidential, residentialProxies, hasLowRate, lo
 function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
     // 创建完整选项，包含所有地区自动选择、手动选择和其他地区选项
     const serviceOptions = [
+        
         GLOBAL_ROUTING,                             // 代理模式优先
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
+        ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
@@ -712,11 +724,13 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
     // 创建流量管理用的完整选项
     const trafficOptions = [
         "DIRECT",                                   // 直连优先
+        
         GLOBAL_ROUTING,                             // 代理模式
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
+        ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
@@ -743,11 +757,13 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
 function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidential, hasLowRate, hasOtherProxies) {
     // 创建自定义规则用的完整选项
     const customOptions = [
+        
         GLOBAL_ROUTING,                             // 代理模式优先
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
+        ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
@@ -784,11 +800,13 @@ function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResident
     const defaultOptions = [
         "DIRECT",                                   // 直连优先
         "REJECT",                                   // 拒绝连接
+        
         GLOBAL_ROUTING,                             // 代理模式
         "延迟优选",                                   // 延迟优选
         "故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
+        ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
         ...(hasOtherProxies ? ["其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
