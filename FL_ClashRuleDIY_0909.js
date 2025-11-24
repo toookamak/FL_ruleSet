@@ -3,7 +3,7 @@
 // 优化：直接使用完整规则URL，便于维护
 // 特点：所有规则集使用完整URL，图标使用完整URL
 // 版本：v8.1.1
-// 最后更新：2025-11-24  |  优化地区分组
+// 最后更新：2025-11-24  |  增加emoji优化辨识度
 // ===================== 待       办 =====================
 //
 // 1.优化了规则集顺序，补充精简规则集
@@ -72,8 +72,8 @@ const CONFIG_MANAGER = {
  */
 const GLOBAL_ROUTING = "代理模式";                    // 核心代理模式入口
 const ALL_NODES_GROUP = "🌍 全部节点";                // 显示所有节点线路
-const RESIDENTIAL_LINE = "家宽/原生线路";             // 家宽/原生IP线路
-const LOW_RATE_NODE = "低倍率节点";                  // 低倍率优惠节点
+const RESIDENTIAL_LINE = "🏠 家宽/原生线路";             // 家宽/原生IP线路
+const LOW_RATE_NODE = "💰 低倍率节点";                  // 低倍率优惠节点
 const INSTANT_MESSAGING = "即时通讯";                // 即时通讯服务
 const AI_SERVICE = "AI服务";                         // AI相关服务
 const PLATFORM_SERVICE = "平台服务";                 // 平台类服务
@@ -308,15 +308,16 @@ function overwriteProxyGroups(params) {
     // 合并所有代理组 - 按照优化后的顺序排列（服务策略组靠前，地区策略组靠后）
     const allGroups = [
         ...coreGroups,
-        ...serviceGroups,           // 服务策略组靠前
         ...lineTypeGroups,
+        ...(otherManualGroup ? [otherManualGroup] : []),
+        ...(otherAutoGroup ? [otherAutoGroup] : []),
+        ...serviceGroups,           // 服务策略组靠前
         ...trafficGroups, 
         ...customRuleGroups,
         ...defaultRouteGroups,
         ...autoSelectGroups,        // 地区自动选择组
         ...manualSelectGroups,      // 地区手动选择组
-        ...(otherManualGroup ? [otherManualGroup] : []),
-        ...(otherAutoGroup ? [otherAutoGroup] : [])
+
     ];
     
     // 存储到缓存和参数（保持原有分类排序逻辑以确保规则执行顺序）
@@ -338,25 +339,25 @@ function createRegionalConfig() {
     return [
         { 
             code: "HK",                         // 地区代码
-            name: "香港",                        // 地区名称
+            name: "🇭🇰 香港",                        // 地区名称
             icon: ICONS.HK,                     // 地区图标
             regex: /(香港|HK|Hong Kong|🇭🇰)/i    // 匹配正则表达式
         },
         {
             code: "SG", 
-            name: "新加坡",
+            name: "🇸🇬 新加坡",
             icon: ICONS.SG,
             regex: /(新加坡|狮城|SG|Singapore|🇸🇬)/i
         },
         {
             code: "JP", 
-            name: "日本",
+            name: "🇯🇵 日本",
             icon: ICONS.JP,
             regex: /(日本|JP|Japan|🇯🇵)/i
         },
         {
             code: "US", 
-            name: "美国", 
+            name: "🇺🇸 美国", 
             icon: ICONS.US,
             regex: /(美国|US|USA|United States|America|🇺🇸)/i
         }
@@ -425,19 +426,19 @@ function createBaseOptions(COUNTRY_REGIONS, availableRegions, hasResidential, ha
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 显示所有节点线路        
-        "延迟优选",                                   // 延迟优选策略组
-        "故障转移",                                   // 故障转移策略组
+        "⚡ 延迟优选",                                   // 延迟优选策略组
+        "🚧 故障转移",                                   // 故障转移策略组
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路（如果存在）
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点（如果存在）
-        "负载均衡 · 散列",                            // 散列负载均衡
-        "负载均衡 · 轮询",                            // 轮询负载均衡
+        "⚖️ 负载均衡 · 散列",                            // 散列负载均衡
+        "🔁 负载均衡 · 轮询",                            // 轮询负载均衡
         "DIRECT",                                     // 直连
         "REJECT"                                      // 拒绝连接
     ];
     
     // 如果有其他地区节点，添加其他地区手动选择
     if (hasOtherProxies) {
-        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 3 + 3, 0, "其他地区 · 手动选择");
+        baseOptions.splice(COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).length * 3 + 3, 0, "🌐 其他地区 · 手动选择");
     }
     
     return baseOptions;
@@ -469,7 +470,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
         }),
         
         // 延迟优选 - 根据延迟自动选择最优节点
-        createProxyGroup("延迟优选", "url-test", {
+        createProxyGroup("⚡ 延迟优选", "url-test", {
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
@@ -478,7 +479,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
         }),
         
         // 故障转移 - 当主节点故障时自动切换到备选节点
-        createProxyGroup("故障转移", "fallback", {
+        createProxyGroup("🚧 故障转移", "fallback", {
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
             proxies: allProxies.length ? allProxies : ["DIRECT"],  // 所有代理或直连
@@ -487,7 +488,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
         }),
         
         // 负载均衡 - 散列模式
-        createProxyGroup("负载均衡 · 散列", "load-balance", {
+        createProxyGroup("⚖️ 负载均衡 · 散列", "load-balance", {
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             strategy: "consistent-hashing",         // 一致性哈希策略
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
@@ -497,7 +498,7 @@ function createCoreGroups(allProxies, COUNTRY_REGIONS, availableRegions, hasResi
         }),
         
         // 负载均衡 - 轮询模式
-        createProxyGroup("负载均衡 · 轮询", "load-balance", {
+        createProxyGroup("🔁 负载均衡 · 轮询", "load-balance", {
             category: CONFIG_MANAGER.GROUP_CATEGORY.CORE,         // 核心路由分类
             strategy: "round-robin",                // 轮询策略
             "exclude-filter": "自动选择|手动选择",    // 排除自动和手动选择组
@@ -564,7 +565,7 @@ function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
     
     // 其他地区组（自动选择和手动选择）
     const otherAutoGroup = hasOtherProxies ? createProxyGroup(
-        "其他地区 · 自动选择",                       // 自动选择其他地区节点
+        "🌐 其他地区 · 自动选择",                       // 自动选择其他地区节点
         "url-test", 
         {
             category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,
@@ -577,7 +578,7 @@ function createRegionalGroups(params, COUNTRY_REGIONS, availableRegions) {
     ) : null;
     
     const otherManualGroup = hasOtherProxies ? createProxyGroup(
-        "其他地区 · 手动选择",                       // 手动选择其他地区节点
+        "🌐 其他地区 · 手动选择",                       // 手动选择其他地区节点
         "select", 
         {
             category: CONFIG_MANAGER.GROUP_CATEGORY.REGION,
@@ -635,14 +636,14 @@ function createServiceGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
     const serviceOptions = [
         
         GLOBAL_ROUTING,                             // 代理模式优先
-        "延迟优选",                                   // 延迟优选
-        "故障转移",                                   // 故障转移
+        "⚡ 延迟优选",                                   // 延迟优选
+        "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -726,14 +727,14 @@ function createTrafficGroups(COUNTRY_REGIONS, availableRegions, hasResidential, 
         "DIRECT",                                   // 直连优先
         
         GLOBAL_ROUTING,                             // 代理模式
-        "延迟优选",                                   // 延迟优选
-        "故障转移",                                   // 故障转移
+        "⚡ 延迟优选",                                   // 延迟优选
+        "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "REJECT"                                    // 拒绝连接
     ];
     
@@ -759,14 +760,14 @@ function createCustomRuleGroups(COUNTRY_REGIONS, availableRegions, hasResidentia
     const customOptions = [
         
         GLOBAL_ROUTING,                             // 代理模式优先
-        "延迟优选",                                   // 延迟优选
-        "故障转移",                                   // 故障转移
+        "⚡ 延迟优选",                                   // 延迟优选
+        "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 全部节点优先
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : []), // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : []), // 添加其他地区手动选择
         "DIRECT",                                   // 直连
         "REJECT"                                    // 拒绝连接
     ];
@@ -802,14 +803,14 @@ function createDefaultRouteGroups(COUNTRY_REGIONS, availableRegions, hasResident
         "REJECT",                                   // 拒绝连接
         
         GLOBAL_ROUTING,                             // 代理模式
-        "延迟优选",                                   // 延迟优选
-        "故障转移",                                   // 故障转移
+        "⚡ 延迟优选",                                   // 延迟优选
+        "🚧 故障转移",                                   // 故障转移
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 自动选择`),
         ...COUNTRY_REGIONS.filter(r => availableRegions.has(r.name)).map(r => `${r.name} · 手动选择`),
         ALL_NODES_GROUP,                            // 全部节点
         ...(hasResidential ? [RESIDENTIAL_LINE] : []), // 家宽线路
         ...(hasLowRate ? [LOW_RATE_NODE] : []),        // 低倍率节点
-        ...(hasOtherProxies ? ["其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
+        ...(hasOtherProxies ? ["🌐 其他地区 · 手动选择"] : [])  // 添加其他地区手动选择
     ];
     
     return [
