@@ -941,10 +941,7 @@ function overwriteRules(params) {
         //"RULE-SET,private,DIRECT",
         // 私有IP直连规则（不解析）
         //"GEOIP,private,DIRECT,no-resolve",
-        // 国内域名直连规则
-        "GEOSITE,cn,DIRECT",
-        // 国内IP直连规则（不解析）
-        "GEOIP,cn,DIRECT,no-resolve",
+
         
         // === 最终匹配规则 ===
         // 国内IP流量走国内流量策略组
