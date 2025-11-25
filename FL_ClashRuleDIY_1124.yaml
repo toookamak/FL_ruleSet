@@ -1,0 +1,722 @@
+# FL_ClashRuleDIY_1124.yaml
+# 版本：v8.2.2 -> YAML版本
+# 最后更新：2025-11-24
+# 说明：此配置文件支持filter过滤的完整Clash配置
+
+# 基础端口配置
+port: 7890
+socks-port: 7891
+mixed-port: 7890
+redir-port: 7892
+
+# 基础设置
+allow-lan: true
+bind-address: "*"
+mode: Rule
+log-level: info
+
+# 高级设置
+unified-delay: true
+tcp-concurrent: true
+geodata-mode: true
+geox-url:
+  geoip: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.dat"
+  geosite: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+
+# 流量嗅探配置
+sniffer:
+  enable: true
+  sniffing:
+    - tls
+    - http
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: false
+
+# DNS 配置
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: false
+  use-system-hosts: false
+  ipv6: false
+  fake-ip-filter:
+    - "*.lan"
+    - "*.local"
+    - "time.*.com"
+    - "ntp.*.com"
+    - "*.market.xiaomi.com"
+    - "localhost.ptlogin2.qq.com"
+    - "localhost.sec.qq.com"
+    - "*.qq.com"
+    - "*.tencent.com"
+    - "*.msftconnecttest.com"
+    - "*.msftncsi.com"
+  default-nameserver:
+    - tls://223.5.5.5
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  proxy-server-nameserver:
+    - https://1.1.1.1/dns-query
+    - https://223.5.5.5/dns-query
+  nameserver-policy:
+    "geosite:private": system
+    "geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn":
+      - 119.29.29.29
+      - 223.5.5.5
+
+# TUN 配置
+tun:
+  enable: true
+  stack: mixed
+  device: Mihomo
+  dns-hijack:
+    - any:53
+  auto-route: true
+  auto-redirect: false
+  auto-detect-interface: true
+  strict-route: false
+  route-exclude-address: []
+  mtu: 1500
+
+# 代理组配置
+proxy-groups:
+  # 核心路由组
+  - name: "🧭 代理模式"
+    type: select
+    proxies:
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🌍 全部节点"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "⚖️ 负载均衡 · 散列"
+      - "🔁 负载均衡 · 轮询"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Proxy.png
+
+  # 地区选择组 (使用include-all和filter确保自动包含所有匹配节点)
+  - name: "🇭🇰 香港"
+    type: select
+    include-all: true
+    filter: "(?i)(香港|HK|Hong Kong|🇭🇰)"
+    exclude-filter: "(?i)(家宽|residential|home|低倍率|lowrate|自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Hong_Kong.png
+
+  - name: "🇸🇬 新加坡"
+    type: select
+    include-all: true
+    filter: "(?i)(新加坡|狮城|SG|Singapore|🇸🇬)"
+    exclude-filter: "(?i)(家宽|residential|home|低倍率|lowrate|自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Singapore.png
+
+  - name: "🇯🇵 日本"
+    type: select
+    include-all: true
+    filter: "(?i)(日本|JP|Japan|🇯🇵)"
+    exclude-filter: "(?i)(家宽|residential|home|低倍率|lowrate|自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Japan.png
+
+  - name: "🇺🇸 美国"
+    type: select
+    include-all: true
+    filter: "(?i)(美国|US|USA|United States|America|🇺🇸)"
+    exclude-filter: "(?i)(家宽|residential|home|低倍率|lowrate|自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/United_States.png
+
+  # 全部节点组
+  - name: "🌍 全部节点"
+    type: select
+    include-all: true
+    exclude-filter: "(?i)(自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/World_Map.png
+
+  # 自动测试组
+  - name: "⚡ 延迟优选"
+    type: url-test
+    include-all: true
+    url: "http://www.gstatic.com/generate_204"
+    interval: 600
+    tolerance: 100
+    exclude-filter: "(?i)(自动选择|手动选择)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Speedtest.png
+
+  - name: "🚧 故障转移"
+    type: fallback
+    include-all: true
+    url: "http://www.gstatic.com/generate_204"
+    interval: 600
+    exclude-filter: "(?i)(自动选择|手动选择)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Final.png
+
+  # 负载均衡组
+  - name: "⚖️ 负载均衡 · 散列"
+    type: load-balance
+    include-all: true
+    strategy: consistent-hashing
+    url: "http://www.gstatic.com/generate_204"
+    interval: 600
+    exclude-filter: "(?i)(自动选择|手动选择)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Balance.png
+
+  - name: "🔁 负载均衡 · 轮询"
+    type: load-balance
+    include-all: true
+    strategy: round-robin
+    url: "http://www.gstatic.com/generate_204"
+    interval: 600
+    exclude-filter: "(?i)(自动选择|手动选择)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Balance.png
+
+  # 线路特性组
+  - name: "🏠 家宽/原生线路"
+    type: select
+    include-all: true
+    filter: "(?i)(家宽|原生|residential|home)"
+    exclude-filter: "(?i)(自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/VIP.png
+
+  - name: "💰 低倍率节点"
+    type: select
+    include-all: true
+    filter: "(?i)(低倍率|lowrate|低-rate|倍率)"
+    exclude-filter: "(?i)(自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Speedtest.png
+
+  # 通知专用组
+  - name: "📢 机场通知"
+    type: select
+    include-all: true
+    filter: "(?i)(自动|故障|流量|官网|套餐|机场|订阅|年|月|失联|频道|Traffic|Expire|剩余|激励|分享|到期|续费|充值)"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Apple_Mail.png
+
+  # 服务专用组
+  - name: "办公通讯"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Notion.png
+
+  - name: "AI服务"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/ChatGPT.png
+
+  - name: "谷歌服务"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Google_Search.png
+
+  - name: "微软服务"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Microsoft.png
+
+  - name: "虚幻引擎"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Download.png
+
+  - name: "广告拦截"
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Advertising.png
+
+  # 流量管理组
+  - name: "大流量通道"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - DIRECT
+      - REJECT
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Download.png
+
+  # 自定义规则组
+  - name: "自定义代理规则"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - DIRECT
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Proxy.png
+
+  - name: "自定义直连规则"
+    type: select
+    proxies:
+      - DIRECT
+      - "🧭 代理模式"
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+      - REJECT
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Direct.png
+
+  # 默认路由组
+  - name: "国内流量"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - DIRECT
+      - REJECT
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/StreamingCN.png
+
+  - name: "国际流量"
+    type: select
+    proxies:
+      - "🧭 代理模式"
+      - DIRECT
+      - REJECT
+      - "⚡ 延迟优选"
+      - "🚧 故障转移"
+      - "🇭🇰 香港"
+      - "🇸🇬 新加坡"
+      - "🇯🇵 日本"
+      - "🇺🇸 美国"
+      - "🏠 家宽/原生线路"
+      - "💰 低倍率节点"
+      - "📢 机场通知"
+      - "🌍 全部节点"
+    icon: https://fastly.jsdelivr.net/gh/Koolson/Qure/IconSet/Color/Streaming!CN.png
+
+# 规则提供器
+rule-providers:
+  Reject_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/ip/Reject_ip.yaml"
+    path: ./ruleset/toookamak/Reject_ip.yaml
+
+  Reject_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip.yaml"
+    path: ./ruleset/toookamak/Reject_no_ip.yaml
+
+  Reject_domainset:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_domainset.yaml"
+    path: ./ruleset/toookamak/Reject_domainset.yaml
+
+  Reject_no_ip_drop:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_drop.yaml"
+    path: ./ruleset/toookamak/Reject_no_ip_drop.yaml
+
+  Reject_no_ip_no_drop:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/REJECT/no_ip/Reject_no_ip_no_drop.yaml"
+    path: ./ruleset/toookamak/Reject_no_ip_no_drop.yaml
+
+  GoogleFCM_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/GoogleFCM_ip.yaml"
+    path: ./ruleset/toookamak/GoogleFCM_ip.yaml
+
+  Lan_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Lan_ip.yaml"
+    path: ./ruleset/toookamak/Lan_ip.yaml
+
+  SteamCN_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/SteamCN_ip.yaml"
+    path: ./ruleset/toookamak/SteamCN_ip.yaml
+
+  Domestic_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Domestic_no_ip.yaml"
+    path: ./ruleset/toookamak/Domestic_no_ip.yaml
+
+  GoogleFCM_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/GoogleFCM_no_ip.yaml"
+    path: ./ruleset/toookamak/GoogleFCM_no_ip.yaml
+
+  MicrosoftCDN_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/MicrosoftCDN_no_ip.yaml"
+    path: ./ruleset/toookamak/MicrosoftCDN_no_ip.yaml
+
+  Stream_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Stream_ip.yaml"
+    path: ./ruleset/toookamak/Stream_ip.yaml
+
+  Telegram_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Telegram_ip.yaml"
+    path: ./ruleset/toookamak/Telegram_ip.yaml
+
+  AI_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/AI_no_ip.yaml"
+    path: ./ruleset/toookamak/AI_no_ip.yaml
+
+  CDN_domainset:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_domainset.yaml"
+    path: ./ruleset/toookamak/CDN_domainset.yaml
+
+  CDN_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_no_ip.yaml"
+    path: ./ruleset/toookamak/CDN_no_ip.yaml
+
+  Download_domainset:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_domainset.yaml"
+    path: ./ruleset/toookamak/Download_domainset.yaml
+
+  Download_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Download_no_ip.yaml"
+    path: ./ruleset/toookamak/Download_no_ip.yaml
+
+  Microsoft_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Microsoft_no_ip.yaml"
+    path: ./ruleset/toookamak/Microsoft_no_ip.yaml
+
+  Telegram_no_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Telegram_no_ip.yaml"
+    path: ./ruleset/toookamak/Telegram_no_ip.yaml
+
+  Figma_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Figma/Figma.yaml"
+    path: ./ruleset/toookamak/Figma_ip.yaml
+
+  Notion_ip:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Notion/Notion.yaml"
+    path: ./ruleset/toookamak/Notion_ip.yaml
+
+  Github:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/GitHub/GitHub.yaml"
+    path: ./ruleset/toookamak/Github.yaml
+
+  OneDrive:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OneDrive/OneDrive.yaml"
+    path: ./ruleset/toookamak/OneDrive.yaml
+
+  YouTube:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/YouTube/YouTube.yaml"
+    path: ./ruleset/toookamak/YouTube.yaml
+
+  Google:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Google/Google.yaml"
+    path: ./ruleset/toookamak/Google.yaml
+
+  Gemini:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Gemini/Gemini.yaml"
+    path: ./ruleset/toookamak/Gemini.yaml
+
+  OpenAI:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/OpenAI/OpenAI.yaml"
+    path: ./ruleset/toookamak/OpenAI.yaml
+
+  GameDownload:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Game/GameDownload/GameDownload.yaml"
+    path: ./ruleset/toookamak/GameDownload.yaml
+
+  UnrealRules:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Epic/Epic.yaml"
+    path: ./ruleset/toookamak/UnrealRules.yaml
+
+  Dropbox:
+    type: http
+    behavior: classical
+    format: yaml
+    interval: 172800
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Dropbox/Dropbox.yaml"
+    path: ./ruleset/toookamak/Dropbox.yaml
+
+  CustomProxyRules:
+    type: http
+    behavior: classical
+    format: text
+    interval: 86400
+    url: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnPROXYRules.list"
+    path: ./ruleset/toookamak/OwnPROXYRules.yaml
+
+  CustomDirectRules:
+    type: http
+    behavior: classical
+    format: text
+    interval: 86400
+    url: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnDIRECTRules.list"
+    path: ./ruleset/toookamak/OwnDIRECTRules.yaml
+
+  CustomRejectRules:
+    type: http
+    behavior: classical
+    format: text
+    interval: 86400
+    url: "https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/OwnRules/OwnREJECTRules.list"
+    path: ./ruleset/toookamak/OwnREJECTRules.yaml
+
+  applications:
+    type: http
+    behavior: classical
+    format: text
+    interval: 86400
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/applications.txt"
+    path: ./ruleset/toookamak/applications.yaml
+
+# 规则配置
+rules:
+  - RULE-SET,Reject_no_ip,广告拦截
+  - RULE-SET,Reject_domainset,广告拦截
+  - RULE-SET,Reject_no_ip_drop,广告拦截
+  - RULE-SET,Reject_no_ip_no_drop,广告拦截
+  - RULE-SET,Reject_ip,广告拦截
+  - RULE-SET,CustomRejectRules,广告拦截
+  
+  - GEOSITE,cn,DIRECT
+  - GEOIP,cn,DIRECT,no-resolve
+  - RULE-SET,Lan_ip,DIRECT
+  - RULE-SET,Domestic_no_ip,DIRECT
+  
+  - RULE-SET,applications,大流量通道
+  
+  - RULE-SET,CustomProxyRules,自定义代理规则
+  - RULE-SET,CustomDirectRules,自定义直连规则
+  
+  - RULE-SET,Figma_ip,办公通讯
+  - RULE-SET,Notion_ip,办公通讯
+  - RULE-SET,Github,办公通讯
+  - RULE-SET,OneDrive,办公通讯
+  - RULE-SET,Dropbox,办公通讯
+  - RULE-SET,Telegram_ip,办公通讯
+  - RULE-SET,Telegram_no_ip,办公通讯
+  
+  - RULE-SET,OpenAI,AI服务
+  - RULE-SET,AI_no_ip,AI服务
+  - RULE-SET,Gemini,AI服务
+  - RULE-SET,YouTube,谷歌服务
+  - RULE-SET,GoogleFCM_ip,谷歌服务
+  - RULE-SET,Google,谷歌服务
+  - RULE-SET,GoogleFCM_no_ip,谷歌服务
+  - RULE-SET,Microsoft_no_ip,微软服务
+  
+  - RULE-SET,MicrosoftCDN_no_ip,大流量通道
+  - RULE-SET,CDN_domainset,大流量通道
+  - RULE-SET,CDN_no_ip,大流量通道
+  - RULE-SET,Download_domainset,大流量通道
+  - RULE-SET,Download_no_ip,大流量通道
+  - RULE-SET,GameDownload,大流量通道
+  - RULE-SET,Stream_ip,大流量通道
+  
+  - RULE-SET,UnrealRules,虚幻引擎
+  
+  - GEOIP,CN,国内流量
+  - MATCH,国际流量
