@@ -833,10 +833,14 @@ function overwriteRules(params) {
         `RULE-SET,Reject_no_ip_drop,${AD_BLOCKING}`,
         `RULE-SET,Reject_no_ip_no_drop,${AD_BLOCKING}`,
         `RULE-SET,Reject_ip,${AD_BLOCKING}`,
+        `RULE-SET,CustomRejectRules,${AD_BLOCKING}`,
+
         
         // 直连规则
         "GEOSITE,cn,DIRECT",
         "GEOIP,cn,DIRECT,no-resolve",
+        `RULE-SET,Lan_ip,DIRECT`,
+        `RULE-SET,Domestic_no_ip,DIRECT`,
         
         // 用户自定义规则
         ...customRules,
@@ -874,6 +878,7 @@ function overwriteRules(params) {
         `RULE-SET,Download_domainset,${HIGH_TRAFFIC_CHANNEL}`,
         `RULE-SET,Download_no_ip,${HIGH_TRAFFIC_CHANNEL}`,
         `RULE-SET,GameDownload,${HIGH_TRAFFIC_CHANNEL}`,
+        `RULE-SET,Stream_ip,${HIGH_TRAFFIC_CHANNEL}`,
         
         // 虚幻引擎规则
         `RULE-SET,UnrealRules,${UNREAL_ENGINE}`,
@@ -932,14 +937,7 @@ function createRuleProviders() {
         ), // 引用：RULE-SET,Reject_no_ip_no_drop -> 广告拦截 (AD_BLOCKING)
         
         // 直连规则集
-        China_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/China_ip.yaml",
-            "./ruleset/toookamak/China_ip.yaml"
-        ), // 未被 rules 引用
-        Domestic_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Domestic_ip.yaml",
-            "./ruleset/toookamak/Domestic_ip.yaml"
-        ), // 未被 rules 引用
+
         GoogleFCM_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/GoogleFCM_ip.yaml",
             "./ruleset/toookamak/GoogleFCM_ip.yaml"
@@ -947,27 +945,15 @@ function createRuleProviders() {
         Lan_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/Lan_ip.yaml",
             "./ruleset/toookamak/Lan_ip.yaml"
-        ), // 未被 rules 引用
+        ), // 直连引用
         SteamCN_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/ip/SteamCN_ip.yaml",
             "./ruleset/toookamak/SteamCN_ip.yaml"
         ), // 未被 rules 引用
-        AppleCDN_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCDN_no_ip.yaml",
-            "./ruleset/toookamak/AppleCDN_no_ip.yaml"
-        ), // 未被 rules 引用
-        AppleCN_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/AppleCN_no_ip.yaml",
-            "./ruleset/toookamak/AppleCN_no_ip.yaml"
-        ), // 未被 rules 引用
-        Direct_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Direct_no_ip.yaml",
-            "./ruleset/toookamak/Direct_no_ip.yaml"
-        ), // 未被 rules 引用
         Domestic_no_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/Domestic_no_ip.yaml",
             "./ruleset/toookamak/Domestic_no_ip.yaml"
-        ), // 未被 rules 引用
+        ), // 直连引用
         GoogleFCM_no_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/GoogleFCM_no_ip.yaml",
             "./ruleset/toookamak/GoogleFCM_no_ip.yaml"
@@ -976,20 +962,12 @@ function createRuleProviders() {
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/MicrosoftCDN_no_ip.yaml",
             "./ruleset/toookamak/MicrosoftCDN_no_ip.yaml"
         ), // 引用：RULE-SET,MicrosoftCDN_no_ip -> 大流量通道 (HIGH_TRAFFIC_CHANNEL)
-        SteamCN_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamCN_no_ip.yaml",
-            "./ruleset/toookamak/SteamCN_no_ip.yaml"
-        ), // 未被 rules 引用
-        SteamRegion_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/DIRECT/no_ip/SteamRegion_no_ip.yaml",
-            "./ruleset/toookamak/SteamRegion_no_ip.yaml"
-        ), // 未被 rules 引用
         
         // 代理规则集
         Stream_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Stream_ip.yaml",
             "./ruleset/toookamak/Stream_ip.yaml"
-        ), // 未被 rules 引用
+        ), // 下载通道引用
         Telegram_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/ip/Telegram_ip.yaml",
             "./ruleset/toookamak/Telegram_ip.yaml"
@@ -998,10 +976,6 @@ function createRuleProviders() {
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/AI_no_ip.yaml",
             "./ruleset/toookamak/AI_no_ip.yaml"
         ), // 引用：RULE-SET,AI_no_ip -> AI服务 (AI_SERVICE)
-        Apple_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Apple_no_ip.yaml",
-            "./ruleset/toookamak/Apple_no_ip.yaml"
-        ), // 未被 rules 引用
         CDN_domainset: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/CDN_domainset.yaml",
             "./ruleset/toookamak/CDN_domainset.yaml"
@@ -1022,10 +996,6 @@ function createRuleProviders() {
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Microsoft_no_ip.yaml",
             "./ruleset/toookamak/Microsoft_no_ip.yaml"
         ), // 引用：RULE-SET,Microsoft_no_ip -> 微软服务 (MICROSOFT_SERVICE)
-        Steam_no_ip: createRuleProviderConfig(
-            "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Steam_no_ip.yaml",
-            "./ruleset/toookamak/Steam_no_ip.yaml"
-        ), // 未被 rules 引用
         Telegram_no_ip: createRuleProviderConfig(
             "https://raw.githubusercontent.com/RealSeek/Clash_Rule_DIY/refs/heads/mihomo/PROXY/no_ip/Telegram_no_ip.yaml",
             "./ruleset/toookamak/Telegram_no_ip.yaml"
@@ -1101,7 +1071,7 @@ function createRuleProviders() {
             interval: CONFIG_MANAGER.UPDATE_INTERVALS.STATIC,
             url: CONFIG_MANAGER.CUSTOM_RULES.REJECT_URL,
             path: "./ruleset/toookamak/OwnREJECTRules.yaml"
-        }, // 未被 rules 引用
+        }, // 拒绝连接
 
         // 应用规则集
         applications: {
