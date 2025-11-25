@@ -132,7 +132,7 @@ const CACHE = {
  * 图标开关配置
  */
 const SETTINGS = {
-    DISPLAY_ICONS: true
+    DISPLAY_ICONS: false
 };
 
 /**
@@ -1017,18 +1017,25 @@ function overwriteDns(params) {
         "use-system-hosts": false,
         ipv6: false,
         "fake-ip-filter": [
-            "*.lan", "*.local",
-            "time.*.com", "ntp.*.com",
-            "*.market.xiaomi.com",
-            "localhost.ptlogin2.qq.com",
-            "localhost.sec.qq.com",
-            "*.qq.com", "*.tencent.com",
-            "*.msftconnecttest.com",
-            "*.msftncsi.com"
+            "*.lan", "*.local",// 局域网地址
+            "time.*.com", "ntp.*.com",// 时间同步
+            "*.xiaomi.com",// 小米相关
+            "*.apple.com" ,// Apple 相关
+            "localhost.ptlogin2.qq.com",// 腾讯相关
+            "localhost.sec.qq.com",// 腾讯相关
+            "*.qq.com", "*.tencent.com",// 腾讯相关
+            "*.msftconnecttest.com",//  Microsoft 相关
+            "*.msftncsi.com"//  Microsoft 相关
         ],
-        "default-nameserver": ["tls://223.5.5.5"],
+        "default-nameserver": [
+            "tls://223.5.5.5",          // 阿里 DNS
+            "tls://1.1.1.1",           // Cloudflare
+            "tls://9.9.9.9",           // Quad9
+            
+        ],
         nameserver: [
             "https://dns.alidns.com/dns-query",
+            "https://cloudflare-dns.com/dns-query",
             "https://doh.pub/dns-query"
         ],
         "proxy-server-nameserver": [
@@ -1037,7 +1044,10 @@ function overwriteDns(params) {
         ],
         "nameserver-policy": {
             'geosite:private': 'system',
-            'geosite:cn,steam@cn,category-games@cn,microsoft@cn,apple@cn': ['119.29.29.29', '223.5.5.5']
+            'geosite:cn': ['119.29.29.29', '223.5.5.5'],
+            'geosite:geolocation-!cn': ['https://cloudflare-dns.com/dns-query'],
+            'domain:.cn': ['119.29.29.29', '223.5.5.5'], // 特别指明.cn区
+            'geosite:category-games@cn': ['119.29.29.29', '223.5.5.5']
         }
     };
 }
