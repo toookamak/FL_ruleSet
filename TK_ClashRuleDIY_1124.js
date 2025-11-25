@@ -1,4 +1,5 @@
 // TK_ClashRuleDIY
+// https://raw.githubusercontent.com/toookamak/FL_ruleSet/refs/heads/main/TK_ClashRuleDIY_1124.js
 // 版本：v8.2.2
 // 最后更新：2025-11-25  | 
 // ===================== 待       办 =====================
